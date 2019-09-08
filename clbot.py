@@ -93,9 +93,10 @@ def fill_out_form(browser):
     '''
     json_inputs = browser.find_elements_by_class_name('json-form-input')
     for info in json_inputs:
+        input_text = input('This input is for ' + info.get_attribute('name') + ': ')
+        
         try:
-            input_text = input('This input is for ' + info.get_attribute('name') + ': ')
-            info.clear()
+            info.clear()                # for name="language", the field cannot be cleared
             info.send_keys(input_text)
         except KeyboardInterrupt:
             raise
@@ -110,7 +111,9 @@ def main():
     
     create_post(browser)
         
-    
+    # currently, the program stops at Step 3.
+    # quitting out of the program when at the end.
+    browser.close()
 
 if __name__ == '__main__':
     main()   
