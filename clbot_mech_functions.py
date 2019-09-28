@@ -146,6 +146,7 @@ def createGUI(soup):
         #post.createGroup(groupings[x], legend.string)      # add roup to main window
         break
     #return grouping  # returns a list of dictionaries; each field (grouping) having its own dict
+    
     sys.exit(app.exec_())
     return app
     
