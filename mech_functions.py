@@ -8,8 +8,6 @@ import re, sys, threading
 from PyQt5.QtWidgets import (QDialog, QApplication)
 
 
-
-
             ####################### MECHANICAL SOUP ############################
 
 def create_posting():
@@ -40,6 +38,7 @@ def submit(browser):
     Submits the current page's form.
         goes to button with 'continue' text if applicable
     """
+    is_button_there = True
     cont_text = ['continue','Continue','CONTINUE','submit','Submit','SUBMIT']
     button = browser.get_current_page().find('button')
     if type(button) == type(None):
@@ -53,14 +52,14 @@ def submit(browser):
         while (button.text not in cont_text) or (button.get_attribute_list('name')[0] != 'go'):     
             if type(button.find_next('button')) == type(None):
                 print("No more buttons. Meaning no continue on this page. Better luck next time.")
+                is_button_there = False
                 break
             else:
                 button = button.find_next('button')
-        form = browser.select_form()
-        form.choose_submit(button)
-        browser.submit_selected()                   # prompts a follow_link (new page) as well
-    
-
+        if is_button_there:
+        	form = browser.select_form()
+        	form.choose_submit(button)
+        	browser.submit_selected()                   # prompts a follow_link (new page) as well   
 
 def step1(browser):
     """
@@ -142,24 +141,21 @@ def step3(browser):
 def step4(browser):
     """
     Step 4 - Add Map - Adding Address to Post
-        if the postal code already has a value
-            submit(browser)
+        if the zip code (postal code) is not entered then ask for address
     Inputs the address
     """
     soup = browser.get_current_page()
     form = browser.select_form()
+    find = soup.find('button', id='search_button')		# button for finding location
     location_inputs = soup.find_all('input', type=False)
-    if check_zip(location_inputs):
-        # continue with location using zip code
-        submit(browser)
-    else:
-        # ask for address
-        find = soup.find('button', id='search_button')          # button for finding location
+    if not check_zip(location_inputs):
+        # if zip code does not have a value: ask for address
         local_inputs = list_inputs_keep_value(location_inputs)
         local_ans_dict = dict_inputs_keep_value(local_inputs)
-        set_inputs(form, local_ans_dict)
-        form.choose_submit(find)
-        browser.submit_selected()
+
+        set_inputs(form, local_ans_dict) 
+    form.choose_submit(find)
+    browser.submit_selected()
     browser.launch_browser()
 
 def step5(browser):
@@ -169,10 +165,11 @@ def step5(browser):
         # currently, no knowledge of adding files
     CANNOT CONTINUE PAST THIS PAGE. CONTINUE BUTTON 'done with images' NOT WORKING
     """
+    soup = browser.get_current_page()
     form = browser.select_form()
-    button = soup5.find('button', attrs={'name':'go'})
+    button = soup.find('button', attrs={'name':'go'})
     form.choose_submit(button)
-    submit(browser)
+    browser.submit_selected()
 
 ############################################## GUI ##################################################
 # GUI CREATION:
@@ -364,6 +361,16 @@ def not_radio(type_):
 def not_hidden(type_):
     return type_ and not type_ == 'hidden'
 
+def enter_needed_info(browser):
+    form = browser.select_form()
+    info_input = {'PostingTitle':'Selling PS4', 'price':200, 'postal':70808, 'FromEMail':'emailtimenow@protonmail.com'}
+    description = {'PostingBody':'Selling PS4 for $200'}
+    info_select = {'language':'5', 'condition':'10'}
+    form.set_input(info_input)
+    form.set_textarea(description)
+    form.set_select(info_select)
+    submit(browser)
+
 # STEP 4 - FUNCTIONS
 def check_zip(ilist):
     """ 
@@ -400,8 +407,8 @@ def list_inputs_keep_value(ilist):
 
 def dict_inputs_keep_value(ilist):
     """
-        ilist = list of inputs containing tags and dictionaries
-            [(tag, {tag_name:value}), (tag, {tag_name:value})]
+    ilist = list of inputs containing tags and dictionaries
+        [(tag, {tag_name:value}), (tag, {tag_name:value})]
     Return a dictionary with values for inputs based on attribue name
         {name:ans, name:value}
     """
@@ -417,6 +424,7 @@ def dict_inputs_keep_value(ilist):
     return input_ans_dict
 
 def put_strings_together_from_list(list_):
+    """ List must be comprised of strings"""
     text = ""
     for string_ in list_:
         text = text + string_ + " "
