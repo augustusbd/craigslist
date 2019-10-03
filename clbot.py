@@ -8,7 +8,7 @@
 # import requests, bs4
 
 import clbot_functions as CLF
-import clbot_mech_functions as mech
+import mech_functions as mech
 import sys
 
 
