@@ -61,6 +61,22 @@ def submit(browser):
         	form.choose_submit(button)
         	browser.submit_selected()                   # prompts a follow_link (new page) as well   
 
+def steps1_4(browser):
+    """
+    Quick way to move ove through steps while testing.
+    """
+    try:
+        print("Step 1")
+        step1(browser)
+        print("Step 2")
+        step2(browser)
+        print("Step 3")
+        step3_enter_needed_info(browser)
+        print("Step 4")
+        step4(browser)
+    except Eception as err:
+        print("An exception occurred: " + str(err))
+
 def step1(browser):
     """
     Step 1 - Choose Type of Posting
@@ -162,14 +178,17 @@ def step5(browser):
     """
     Step 5 - Add Images 
         # look up how to use PyQt to upload images or drap and drop files
-        # currently, no knowledge of adding files
-    CANNOT CONTINUE PAST THIS PAGE. CONTINUE BUTTON 'done with images' NOT WORKING
+        # currently, no knowledge of adding files to site
+        # mechanicalsoup - adding files with browser
     """
     soup = browser.get_current_page()
-    form = browser.select_form()
-    button = soup.find('button', attrs={'name':'go'})
+    forms = soup.find_all('form')
+    #form = browser.select_form('form',2)        # third form on page; done with images
+    form = browser.select_form('form',form_no_class_index(forms))
+    button = soup.find('button', attrs={'class':'done bigbutton'})
     form.choose_submit(button)
     browser.submit_selected()
+
 
 ############################################## GUI ##################################################
 # GUI CREATION:
@@ -214,8 +233,7 @@ def createGUI(soup):
 def capitalize_each_word(string1):
     for x in range(len(string1)):
         if (x == 0) or (string1[x-1] == ' '):
-            string1 = string1[:x] + string1[x].upper() + string1[x+1:]            
-
+            string1 = string1[:x] + string1[x].upper() + string1[x+1:]
 
 def GroupTags(field):
     """
@@ -233,7 +251,6 @@ def GroupTags(field):
     for index,key in enumerate(tag_names):  
         tag_dict[key] = tags[index]
     return tag_dict
-
 
 def remove_empty_indexes(list1):
     """ Return a list without any empty indexes."""
@@ -361,7 +378,8 @@ def not_radio(type_):
 def not_hidden(type_):
     return type_ and not type_ == 'hidden'
 
-def enter_needed_info(browser):
+def step3_enter_needed_info(browser):
+    """ Subsitute for Step 3 - Quick Info Inputted"""
     form = browser.select_form()
     info_input = {'PostingTitle':'Selling PS4', 'price':200, 'postal':70808, 'FromEMail':'emailtimenow@protonmail.com'}
     description = {'PostingBody':'Selling PS4 for $200'}
@@ -382,7 +400,7 @@ def check_zip(ilist):
     """
     for item in ilist:
         if item.get_attribute_list('name')[0] == 'postal':
-            if item.get_attribute_list('value') != "":
+            if item.get_attribute_list('value')[0] != "":
                 return True
     return False
 
@@ -397,7 +415,7 @@ def list_inputs_keep_value(ilist):
     for item in ilist:
         name = item.get_attribute_list('name')[0]
         value = item.get_attribute_list('value')
-        if str(type(value[0])) != "<class 'NoneType'>":
+        if value[0] != None:
             value_string = put_strings_together_from_list(value)
             value_string = remove_trailing_whitespace(value_string)
             input_list.append([item, {name:value_string}])
@@ -435,7 +453,18 @@ def remove_trailing_whitespace(string_):
         string_ = string_[:-1]
     return string_
 
-
+# STEP 5 - FUNCIONS
+def form_no_class_index(forms_list):
+    """ 
+    Step 5 - Find Form Without A Class
+        form needed for selecting button; does not have a class
+        other forms have classes with values: "add" and "delete ajax"
+    Returns an integer value for the index
+    """
+    for num,form in enumerate(forms_list):
+        if form.get_attribute_list('class')[0] == None:
+            return num                  # returns index of form with no class
+    return num
 
 ########################## Drop Down List #########################
 # Selects Options in DropDown   
