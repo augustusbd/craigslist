@@ -9,8 +9,33 @@ from PyQt5.QtWidgets import (QDialog, QApplication)
 
 
             ####################### MECHANICAL SOUP ############################
+def process():
+    """
+    This is the step by step process of the mechanicalsoup implementation of 'Create A Post'.
+
+    Step 1: Choose Type of Posting
+    Step 2: Choose A Category
+    Step 3: Create Posting - Enter Details 
+    Step 4: Add Map - Adding Location to Post
+    Step 5: Add Images
+    Step 6: Unpublished Draft of Posting
+        - ask user if they want to edit:
+            # post
+            # location
+            # images
+        - or finish and publish draft
+    Step 7: ? email phase
+    To Do: 
+        - add GUI functionality. 
+        - add a way to save data. 
+        - add a way for bot to access email. 
+        - continue to edit functions. 
+    """
+    return None
+
 
 def create_posting():
+    """Quick Way to go to 'create a post' on craigslist site."""
     URL = "https://batonrouge.craigslist.org/"
     browser = mechanicalsoup.StatefulBrowser()
     browser.open(URL)
@@ -18,25 +43,29 @@ def create_posting():
     return browser
 
 def open(URL):
-    """ New StatefulBroser object - open URL """
+    """New StatefulBroser object - open URL."""
     browser = mechanicalsoup.StatefulBrowser()
     browser.open(URL)
     return browser
 
 def create_post(browser):
-    """ Create Post -- Hub for Steps """
+    """Hub for 'Create A Post' Steps."""
     browser.follow_link(id='post')
     try:
         step1(browser)
         step2(browser)
         step3(browser)
+        step4(browser)
+        step5(browser)
+        step6(browser)
     except Exception as err:
         print("An exception occurred: " + str(err)) 
 
 def submit(browser):
     """
     Submits the current page's form.
-        goes to button with 'continue' text if applicable
+    
+    Looks for a button 'continue' text, if applicable, and uses that button for submission.
     """
     is_button_there = True
     cont_text = ['continue','Continue','CONTINUE','submit','Submit','SUBMIT']
@@ -61,29 +90,30 @@ def submit(browser):
         	form.choose_submit(button)
         	browser.submit_selected()                   # prompts a follow_link (new page) as well   
 
-def steps1_4(browser):
-    """
-    Quick way to move ove through steps while testing.
-    """
+def steps1_5(browser):
+    """Quick Way to move through steps while testing."""
     try:
-        print("Step 1")
+        print("Step 1 - Choose Type of Posting")
         step1(browser)
-        print("Step 2")
+        print("Step 2 - Choose A Category")
         step2(browser)
-        print("Step 3")
+        print("Step 3 - Create Posting - Enter Details")
         step3_enter_needed_info(browser)
-        print("Step 4")
+        print("Step 4 - Add Map - Adding Location to Post")
         step4(browser)
+        print("Step 5 - Add Images")
+        step5(browser)
+        browser.launch_browser()
     except Eception as err:
         print("An exception occurred: " + str(err))
 
 def step1(browser):
     """
-    Step 1 - Choose Type of Posting
-        job offered, gig offered, resume/job wanted, housing offered,
-        housing wanted, for sale by owner, for sale by dealer,
-        wanted by owner, wanted by dealer, service offered,
-        community, event/class
+    Step 1 - Choose Type of Posting.
+
+    posting types: job offered, gig offered, resume/job wanted, 
+        housing offered, housing wanted, for sale by owner, for sale by dealer,
+        wanted by owner, wanted by dealer, service offered, community, event/class
     """
     form = browser.select_form()
     data = {'id':'fso'}                     # {name:value, name:value, ...}
@@ -93,9 +123,9 @@ def step1(browser):
 
 def step2(browser):
     """
-    Step 2 - Choose A Category 
-        'for sale by owner from step 1'
-    Select the option with:
+    Step 2 - Choose A Category.
+    
+    Given a choice of 'for sale by owner' from Step 1, select the option with:
         'cars & trucks'
         'video gaming'  - currently using this
     """
@@ -121,9 +151,7 @@ def step2(browser):
 
 
 def step3(browser):
-    """ 
-    Step 3 - Create Posting - Enter Details 
-    """
+    """Step 3 - Create Posting - Enter Details."""
     soup = browser.get_current_page()
     form = browser.select_form()
     inputs = soup.find_all('input',class_=re.compile("json-form-input"),type=not_radio)        # input tags
@@ -156,9 +184,10 @@ def step3(browser):
 
 def step4(browser):
     """
-    Step 4 - Add Map - Adding Address to Post
-        if the zip code (postal code) is not entered then ask for address
-    Inputs the address
+    Step 4 - Add Map - Adding Location to Post.
+    
+    If the zip code (postal code) is not entered then ask for address.
+    The address is then inputted into the browser.
     """
     soup = browser.get_current_page()
     form = browser.select_form()
@@ -172,11 +201,11 @@ def step4(browser):
         set_inputs(form, local_ans_dict) 
     form.choose_submit(find)
     browser.submit_selected()
-    browser.launch_browser()
 
+    
 def step5(browser):
     """
-    Step 5 - Add Images 
+    Step 5 - Add Images.
         # look up how to use PyQt to upload images or drap and drop files
         # currently, no knowledge of adding files to site
         # mechanicalsoup - adding files with browser
@@ -184,10 +213,84 @@ def step5(browser):
     soup = browser.get_current_page()
     forms = soup.find_all('form')
     #form = browser.select_form('form',2)        # third form on page; done with images
-    form = browser.select_form('form',form_no_class_index(forms))
+    form = browser.select_form(form_no_class(forms))
     button = soup.find('button', attrs={'class':'done bigbutton'})
     form.choose_submit(button)
     browser.submit_selected()
+
+
+def step6(browser):
+    """
+    Step 6 - Unpublished Draft of Posting.
+    
+    During this step, the webpage gives the following information:
+        gives user the option to edit:
+            - post
+            - location
+            - images
+        shows the draft
+        publish button
+    User is able to choose between editing and publishing draft
+    """
+    soup = browser.get_current_page()
+    forms = soup.find_all('form')
+    edit_ans = input("Would you like to edit: post, location, or images? ")
+    edit_ans_list = edit_ans.lower().split()
+    negative_ans = ['no','nah','nope','n', 'non', 'n0']
+    # if user answers in the negative, program continues and publishes the draft.
+    if any(x for x in negative_ans if x in edit_ans):
+        print("No Edits? Okay. Publishing the draft now.")
+        button = soup.find('button', attrs={'value':'Continue'})
+        # publishes the post
+        # email gets sent to given email address
+    else:
+        if any(x for x in edit_ans_list if 'post' in x):
+            # edit post
+            button = soup.find('button', attrs={'value':'Edit Post'})
+            print(button.text)
+        elif any(x for x in edit_ans_list if 'location' in x):
+            # edit location
+            button = soup.find('button', attrs={'value':'Edit Location'})
+            print(button.text)
+        elif any(x for x in edit_ans_list if 'images' in x):
+            button = soup.find('button', attrs={'value':'Edit Images'})
+            print(button.text)
+    form = browser.select_form(button.parent)
+    form.choose_submit(button)
+    browser.submit_selected()
+    goto_step(browser, button.text)
+
+def goto_step(browser, text):
+    """
+    Takes the user back to different steps depending on editing choice.
+
+    Depending on text given, this function will call:
+        step3
+        step4
+        step5
+    After the step function is called, step6 is called again
+        going back to the draft, to ask the user 
+        if they would like to edit anything else
+    # Edit step functions to allow users to edit the available information
+    """
+    if text == 'edit post':
+        step3(browser)
+        step6(browser)
+    elif text == 'edit location':
+        step4(browser)
+        step6(browser)
+    elif text == 'edit images':
+        step5(browser)
+        step6(browser)
+    else:
+        # not editing post, location or imags
+        # page was already submitted so do nothing
+        print("Further Action Required To Complete Request")
+        print("You should receive an email shortly, with a link to:")
+        print("\t- publish your ad")
+        print("\t- edit (or confirm an edit to) your ad")
+        print("\t- verify your email address")
+        print("\t- delete your ad")
 
 
 ############################################## GUI ##################################################
@@ -199,7 +302,7 @@ def step5(browser):
 #   Step 3:
 def createGUI(soup):
     """
-    Create a GUI for the tags with input forms
+    Create a GUI for the tags with input forms.
         Make the GeneralDetails Inputs
         Make the Grouping Widgets
             Group tags with same names
@@ -235,9 +338,15 @@ def capitalize_each_word(string1):
         if (x == 0) or (string1[x-1] == ' '):
             string1 = string1[:x] + string1[x].upper() + string1[x+1:]
 
+def capitalize_each_word2(string_):
+    new_string = ""
+    for word in string_.split():
+        new_string = new_string + word + " "
+    return new_string
+
 def GroupTags(field):
     """
-    Create a Group Widget from field (tags)
+    Create a Group Widget from field (tags).
         for tags with a class containing "json-form-input"
     Return a dictionary of tag names with their respective tags    
     """
@@ -253,7 +362,7 @@ def GroupTags(field):
     return tag_dict
 
 def remove_empty_indexes(list1):
-    """ Return a list without any empty indexes."""
+    """Return a list without any empty indexes."""
     new_list = []
     for x in range(len(list1)):
         if len(list1[x]) != 0:
@@ -261,7 +370,7 @@ def remove_empty_indexes(list1):
     return new_list
     
 def return_groups(tags):
-    """ Print Groups and Return a list of tag names"""
+    """Returns a list of tag names."""
     names = []
     #print("These are the groupings inside this field: ")
     for x in range(len(tags)):
@@ -275,6 +384,8 @@ def return_groups(tags):
 # STEP 3 - FUNCTIONS
 def list_inputs(ilist):
     """
+    Returns a list of input tags and their name attributes.
+
         ilist = ResulSet of input tags
     Create a list that contains input tags:
         [(tag, {tag_name_attr:value}), (tag, {tag_name:value})]
@@ -288,6 +399,8 @@ def list_inputs(ilist):
     
 def dict_inputs(ilist):
     """
+    Returns a dictionary of input tags' name attributes and their values.
+
         ilist = list of inputs
     Returns a dictionary with values for inputs based on attribute name
         {name:ans, name:value, name:value}
@@ -302,7 +415,7 @@ def dict_inputs(ilist):
 
 def set_inputs(form, idict):
     """
-    Sets the input tag value for the tag with name attribute 'key'
+    Sets the input tag value for the tag with name attribute 'key'.
     Special case for inputting the description, which is a textarea tag.
         name attribute of this textarea tag = "PostingBody"
     """
@@ -317,6 +430,8 @@ def set_inputs(form, idict):
 
 def list_selects(slist):
     """
+    Returns a list of select tags with their name attributes.
+
     # create a list that contains select tags and their options:
     # [(tag, {tag_name_attr:choices}, {choice1:value1, choice2:value2}), 
     #  (tag, {tag_name:choices}, {choice1:value1, choice2:value2})]
@@ -340,6 +455,8 @@ def list_selects(slist):
 
 def dict_selects(slist):
     """
+    Returns a dictionary of select tags' name attributes and their values.
+
     slist - list of: select tags, their name attributes, and their choices
         ex: [(tag, {tag_name_attr:choices}, {choice1:value1, choice2:value2}), 
             (tag, {tag_name:choices}, {choice1:value1, choice2:value2})]
@@ -364,9 +481,7 @@ def dict_selects(slist):
     return select_ans_dict
 
 def set_selects(form, sdict):
-    """
-    Set the value for select tag with name attribute 'key'
-    """
+    """Set the value for select tag with name attribute 'key'."""
     print("Choosing the options.")
     for key in sdict:
         dict_select = {key:sdict[key]}
@@ -379,7 +494,7 @@ def not_hidden(type_):
     return type_ and not type_ == 'hidden'
 
 def step3_enter_needed_info(browser):
-    """ Subsitute for Step 3 - Quick Info Inputted"""
+    """Subsitute for Step 3 - Quick Information Input."""
     form = browser.select_form()
     info_input = {'PostingTitle':'Selling PS4', 'price':200, 'postal':70808, 'FromEMail':'emailtimenow@protonmail.com'}
     description = {'PostingBody':'Selling PS4 for $200'}
@@ -392,6 +507,8 @@ def step3_enter_needed_info(browser):
 # STEP 4 - FUNCTIONS
 def check_zip(ilist):
     """ 
+    Returns True or False depending on existence of postal code.
+
         ilist = list of inputs
     Returns True
         if zip code (postal code) is already entered
@@ -406,6 +523,8 @@ def check_zip(ilist):
 
 def list_inputs_keep_value(ilist):
     """
+    Returns a list of input tags and their name attributes.
+
         ilist = ResulSet of input tags
     Create a list that contains input tags:
         [(tag, {tag_name_attr:value}), (tag, {tag_name:value})]
@@ -425,6 +544,8 @@ def list_inputs_keep_value(ilist):
 
 def dict_inputs_keep_value(ilist):
     """
+    Returns a dictionary of input tags' name attributes and their values.
+
     ilist = list of inputs containing tags and dictionaries
         [(tag, {tag_name:value}), (tag, {tag_name:value})]
     Return a dictionary with values for inputs based on attribue name
@@ -442,29 +563,32 @@ def dict_inputs_keep_value(ilist):
     return input_ans_dict
 
 def put_strings_together_from_list(list_):
-    """ List must be comprised of strings"""
+    """Return a string comprised from list indices. List must be comprised of strings."""
     text = ""
     for string_ in list_:
         text = text + string_ + " "
     return text
 
 def remove_trailing_whitespace(string_):
+    """Removes trailing whitespace in a string."""
     if string_.endswith(" "):
         string_ = string_[:-1]
     return string_
 
 # STEP 5 - FUNCIONS
-def form_no_class_index(forms_list):
+def form_no_class(forms_list):
     """ 
-    Step 5 - Find Form Without A Class
-        form needed for selecting button; does not have a class
-        other forms have classes with values: "add" and "delete ajax"
-    Returns an integer value for the index
+    Step 5 Function - Find Form Tag Without A Class. 
+
+    Form tag needed for selecting button, does not have a class/
+    Other form tags have classes with values: 'add' and 'delete ajax'.
+    
+    Returns a form tag.
     """
     for num,form in enumerate(forms_list):
         if form.get_attribute_list('class')[0] == None:
-            return num                  # returns index of form with no class
-    return num
+            return form                 # returns form with no class
+    return form
 
 ########################## Drop Down List #########################
 # Selects Options in DropDown   

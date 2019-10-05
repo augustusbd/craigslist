@@ -7,30 +7,26 @@
 # may need requests and beautifulsoup4
 # import requests, bs4
 
-import clbot_functions as CLF
+import selenium_functions as sele
 import mech_functions as mech
 import sys
 
 
 def selenium_browser(URL):
-    browser = CLF.sele_open_browser(URL)
+    browser = sele.sele_open_browser(URL)
     try:
-        CLF.sele_create_post(browser)
+        sele.sele_create_post(browser)
     except Exception as err:
         print("An exception occurred: " + str(err))
     return browser
-
-
 
 def mechanical_browser(URL):
     browser = mech.open(URL)
     try:
         mech.create_post(browser)
-    
     except Exception as err:
         print("An exception occurred: " + str(err))
     return browser
-
 
 
 def main():
@@ -41,16 +37,13 @@ def main():
         _type = input("What type of program: [mech]anicalsoup or [sele]nium? ")
         if _type != 'sele':
             # open browser with mechanical soup
+            # currently mechanical is the only way that fully works
             browser = mechanical_browser(URL)
         else:
             browser = selenium_browser(URL)
     else:
         print("I'm sorry, I can only make posts for now. Goodbye!")
-        exit()
-
-    
-    # currently, the program stops at Step 3.
-    # quitting out of the program when at the end.
+        sys.exit()
     sys.exit()
 
 if __name__ == '__main__':
