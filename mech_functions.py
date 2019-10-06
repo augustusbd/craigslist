@@ -52,12 +52,12 @@ def create_post(browser):
     """Hub for 'Create A Post' Steps."""
     browser.follow_link(id='post')
     try:
-        step1(browser)
-        step2(browser)
-        step3(browser)
-        step4(browser)
-        step5(browser)
-        step6(browser)
+        Step1(browser)
+        Step2(browser)
+        Step3(browser)
+        Step4(browser)
+        Step5(browser)
+        Step6(browser)
     except Exception as err:
         print("An exception occurred: " + str(err)) 
 
@@ -94,20 +94,20 @@ def steps1_5(browser):
     """Quick Way to move through steps while testing."""
     try:
         print("Step 1 - Choose Type of Posting")
-        step1(browser)
+        Step1(browser)
         print("Step 2 - Choose A Category")
-        step2(browser)
+        Step2(browser)
         print("Step 3 - Create Posting - Enter Details")
-        step3_enter_needed_info(browser)
+        Step3_enter_needed_info(browser)
         print("Step 4 - Add Map - Adding Location to Post")
-        step4(browser)
+        Step4(browser)
         print("Step 5 - Add Images")
-        step5(browser)
+        Step5(browser)
         browser.launch_browser()
     except Eception as err:
         print("An exception occurred: " + str(err))
 
-def step1(browser):
+def Step1(browser):
     """
     Step 1 - Choose Type of Posting.
 
@@ -121,7 +121,7 @@ def step1(browser):
     browser.submit_selected()           # submit form         
 
 
-def step2(browser):
+def Step2(browser):
     """
     Step 2 - Choose A Category.
     
@@ -150,7 +150,7 @@ def step2(browser):
     submit(browser)
 
 
-def step3(browser):
+def Step3(browser):
     """Step 3 - Create Posting - Enter Details."""
     soup = browser.get_current_page()
     form = browser.select_form()
@@ -182,7 +182,7 @@ def step3(browser):
     # checkboxes = soup.find_all(type="checkbox")
     
 
-def step4(browser):
+def Step4(browser):
     """
     Step 4 - Add Map - Adding Location to Post.
     
@@ -203,15 +203,22 @@ def step4(browser):
     browser.submit_selected()
 
     
-def step5(browser):
+def Step5(browser):
     """
     Step 5 - Add Images.
         # look up how to use PyQt to upload images or drap and drop files
-        # currently, no knowledge of adding files to site
-        # mechanicalsoup - adding files with browser
     """
     soup = browser.get_current_page()
     forms = soup.find_all('form')
+
+    ans = ask_for_confirmation("Would you like to add images? ")
+    if ans:
+    	button = soup.find('button', class_="addbtn")	# button for adding images to form
+    	while ans:
+    		add_file(browser, button)					# add file to browser using button
+    		ans = ask_for_confirmation("Would you like to add another image? ")
+
+    # continues on to next step
     #form = browser.select_form('form',2)        # third form on page; done with images
     form = browser.select_form(form_no_class(forms))
     button = soup.find('button', attrs={'class':'done bigbutton'})
@@ -219,7 +226,7 @@ def step5(browser):
     browser.submit_selected()
 
 
-def step6(browser):
+def Step6(browser):
     """
     Step 6 - Unpublished Draft of Posting.
     
@@ -260,28 +267,29 @@ def step6(browser):
     browser.submit_selected()
     goto_step(browser, button.text)
 
+
 def goto_step(browser, text):
     """
     Takes the user back to different steps depending on editing choice.
 
     Depending on text given, this function will call:
-        step3
-        step4
-        step5
-    After the step function is called, step6 is called again
+        Step3
+        Step4
+        Step5
+    After the step function is called, Step6 is called again
         going back to the draft, to ask the user 
         if they would like to edit anything else
     # Edit step functions to allow users to edit the available information
     """
     if text == 'edit post':
-        step3(browser)
-        step6(browser)
+        Step3(browser)
+        Step6(browser)
     elif text == 'edit location':
-        step4(browser)
-        step6(browser)
+        Step4(browser)
+        Step6(browser)
     elif text == 'edit images':
-        step5(browser)
-        step6(browser)
+        Step5(browser)
+        Step6(browser)
     else:
         # not editing post, location or imags
         # page was already submitted so do nothing
@@ -493,7 +501,7 @@ def not_radio(type_):
 def not_hidden(type_):
     return type_ and not type_ == 'hidden'
 
-def step3_enter_needed_info(browser):
+def Step3_enter_needed_info(browser):
     """Subsitute for Step 3 - Quick Information Input."""
     form = browser.select_form()
     info_input = {'PostingTitle':'Selling PS4', 'price':200, 'postal':70808, 'FromEMail':'emailtimenow@protonmail.com'}
@@ -590,6 +598,60 @@ def form_no_class(forms_list):
             return form                 # returns form with no class
     return form
 
+def ask_for_confirmation(text):
+	"""Ask a user if they would like to do something or not. Returns True or False."""
+	affirmative = ['yes','ya','ye','oui','si', 'mhm', 'mmhmm']
+	answer = input(text)
+	if answer in affirmative:
+		return True
+	else:
+		return False
+
+def determine_tag_within(tag, tag_name, distinction):
+	"""
+	Finds the tag that fits within the given parameters.
+
+	CURRENTLY DOES NOT WORK; does not really find the tag.
+	Given a tag containing other tags, desired tag name and distinction.
+		a distinction being: type="whatever", name="tagname"
+		a distinction will be put into a dictionary called attrs (attributes)
+
+	Return a tag fitting the description."""
+	attrs = distinction.split(" ")
+	# should take the string before the '=' as the key
+	# and the string after the '=' as the value.
+	for child in tag.children:
+		if type(child) == type(tag):
+			if child.name = tag_name:
+				for key in attrs:
+					if child.get_attribute_list(key)[0] == attrs[key]:
+						return child
+			if child.get_attribute_list('type')
+
+def add_file(browser, button):
+	"""
+	Adds a file to a form.
+	
+	Given a browser and its button associated with the submission of a file.
+	Find the form that the button is held in and find the input tag with type="file".
+	Once the input tag is found, use the form to set the value to the file path.
+	"""
+	path_to_file = input("Copy and Paste the file location.")
+	form = browser.select_form(button.parent)			# select form containing button
+	for child in form.children:
+		if type(child) == type(button):					# must be type 'bs4.element.Tag'
+			if child.get_attribute_list('type')[0] == 'file':		# tag must have type attribute = 'file'
+					# gets the name attribute of tag, in a list
+					name_attribute = child.get_attribute_list('name')
+					name_attribute = remove_trailing_whitespace(put_strings_together_from_list(name_attribute))
+					break
+	form.set(name_attribute, path_to_file)		# add file to form
+	form.choose_submit(button)					# button for adding files (not submiting whole page)
+	browser.submit_selected()
+	print("File: " + path_to_file + " has been added.")
+	return None
+
+
 ########################## Drop Down List #########################
 # Selects Options in DropDown   
 def select_opt(browser):
@@ -675,7 +737,7 @@ def get_values(tag):
 ###########################################################################################
 ############################    Functions With Comments    ################################
 
-def _step3(browser):
+def _Step3(browser):
     """ 
     Step 3 - Create Posting - Enter Details 
     """
