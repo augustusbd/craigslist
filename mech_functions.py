@@ -33,7 +33,7 @@ def process():
     """
     return None
 
-
+# quick create_post
 def create_posting():
     """Quick Way to go to 'create a post' on craigslist site."""
     URL = "https://batonrouge.craigslist.org/"
@@ -50,17 +50,18 @@ def open(URL):
 
 def create_post(browser):
     """Hub for 'Create A Post' Steps."""
-    browser.follow_link(id='post')
+    browser.follow_link(id='post')            # follow link for 'create a post'
     try:
-        Step1(browser)
-        Step2(browser)
-        Step3(browser)
-        Step4(browser)
-        Step5(browser)
-        Step6(browser)
+        choose_type_of_posting(browser)
+        choose_category(browser)
+        add_details(browser)
+        add_location(browser)
+        add_images(browser)
+        edit_draft_of_posting(browser)
     except Exception as err:
         print("An exception occurred: " + str(err)) 
 
+# submit page using 'continue' button
 def submit(browser):
     """
     Submits the current page's form.
@@ -86,28 +87,30 @@ def submit(browser):
             else:
                 button = button.find_next('button')
         if is_button_there:
-        	form = browser.select_form()
-        	form.choose_submit(button)
-        	browser.submit_selected()                   # prompts a follow_link (new page) as well   
+            form = browser.select_form()
+            form.choose_submit(button)
+            browser.submit_selected()                   # prompts a follow_link (new page) as well   
 
+# quick walkthrough
 def steps1_5(browser):
     """Quick Way to move through steps while testing."""
     try:
         print("Step 1 - Choose Type of Posting")
-        Step1(browser)
+        choose_type_of_posting(browser)
         print("Step 2 - Choose A Category")
-        Step2(browser)
+        choose_category(browser)
         print("Step 3 - Create Posting - Enter Details")
-        Step3_enter_needed_info(browser)
+        add_needed_details(browser)
         print("Step 4 - Add Map - Adding Location to Post")
-        Step4(browser)
+        add_location(browser)
         print("Step 5 - Add Images")
-        Step5(browser)
+        add_images(browser)
         browser.launch_browser()
     except Eception as err:
         print("An exception occurred: " + str(err))
 
-def Step1(browser):
+# step 1
+def choose_type_of_posting(browser):
     """
     Step 1 - Choose Type of Posting.
 
@@ -115,61 +118,56 @@ def Step1(browser):
         housing offered, housing wanted, for sale by owner, for sale by dealer,
         wanted by owner, wanted by dealer, service offered, community, event/class
     """
+    soup = browser.get_current_page()
     form = browser.select_form()
-    data = {'id':'fso'}                     # {name:value, name:value, ...}
-    form.set_radio(data)                # check radio button with value='fso' 
-    browser.submit_selected()           # submit form         
-
-
-def Step2(browser):
-    """
-    Step 2 - Choose A Category.
     
-    Given a choice of 'for sale by owner' from Step 1, select the option with:
+    user_input = give_radio_options(browser)		# dictionary = {name_attr:value}
+    form.set_radio(user_input)					# check radio button with value chosen by user
+    browser.submit_selected()					# submit form    
+
+# step 2
+def choose_category(browser):
+	"""
+	Step 2 - Choose Category.
+
+	Given a choice of 'for sale by owner' from Step 1, select the option with:
         'cars & trucks'
         'video gaming'  - currently using this
+	"""
+	soup = browser.get_current_page()
+	form = browser.select_form()
+	user_input = give_radio_options(browser)
+	form.set_radio(user_input)
+	submit(browser)
+
+# step 3
+def add_details(browser):
     """
-    form_label = 'label[class="json-form-item select id category-select variant-radio"]'
-    form = browser.select_form(form_label)
-    soup = browser.get_current_page()                       # returns a beautiful soup object
-    options = soup.find_all('input', "json-form-input id")  # radio buttons (tags)
-    option_labels = soup.find_all('span', "option-label")   # radio button labels
-    category = 'User chosen category; "cars & trucks - by owner" for now.'
-    cate = 'gaming'
-    if len(options) == len(option_labels):
-        for x in range(len(options)):
-            if cate in option_labels[x].text:           # finds label with text containing 'cars'
-                radio_tag = str(options[x]).split('"')       
-                radio_value = radio_tag[-2]             # value of radio_tag is second from the end
-                data = {'id':radio_value}               # radio_value = 145
-                form.set_radio(data)
-                break
-        # can check radio tag string
-        # for type="radio"
-        # then determine how to select value
-    submit(browser)
-
-
-def Step3(browser):
-    """Step 3 - Create Posting - Enter Details."""
+    Step 3 - Create Posting - Enter Details.
+    
+    General Required Information:
+        Posting Title (name attribute='PostingTitle'):
+        Postal Code ('postal'):
+        Description ('PostingBody'):
+        email ('FromEMail'):
+    """
     soup = browser.get_current_page()
     form = browser.select_form()
     inputs = soup.find_all('input',class_=re.compile("json-form-input"),type=not_radio)        # input tags
     description = soup.find('textarea',class_=re.compile("json-form-input"))    # description input
     selects = soup.find_all('select',class_=re.compile("json-form-input"))      # select tags
-    # create a list that contains input tags:
-        # [(tag, {tag_name_attr:value}), (tag, {tag_name:value})]
-    input_list = list_inputs(inputs + [description])    # treating description as part of the inputs
+
+    # dictionary of input tags(and textarea tag)'s name attributes and values
+    dict_inputs = dict_from_list(inputs + [description])    # treating description as part of the inputs
     
-    # create a list that contains select tags and their options:
-        # [(tag, {tag_name_attr:choices}, {choice1:value1, choice2:value2}), 
-        #  (tag, {tag_name:choices}, {choice1:value1, choice2:value2})]       
-    select_list = list_selects(selects)
-    input_ans_dict = dict_inputs(input_list)        # user inputs info for input tags
-    select_ans_dict = dict_selects(select_list)     # user inputs info for select tags
+    # dictionary of select tags' name attributes and values
+    dict_selects = dict_from_list(selects)
+
+    user_ans_dict = user_dict_of_inputs(dict_inputs)       # user inputs info for input tags
+    user_ans_dict.update(user_dict_of_inputs(dict_selects))     # user selects an option for select tags
+    
     # inputs the information into the browser
-    set_inputs(form, input_ans_dict)
-    set_selects(form, select_ans_dict)
+    set_user_inputs(form, user_ans_dict)
     # have to choose a privacy option for email
     email_privacy = {'Privacy':'C'} # CL mail relay (recommended)
     form.set_radio(email_privacy)
@@ -180,9 +178,11 @@ def Step3(browser):
     submit(browser)
     # search for check boxes later
     # checkboxes = soup.find_all(type="checkbox")
-    
+    if check_details_for_error(browser):
+        input_missing_details(browser)
 
-def Step4(browser):
+# step 4
+def add_location(browser):
     """
     Step 4 - Add Map - Adding Location to Post.
     
@@ -191,7 +191,7 @@ def Step4(browser):
     """
     soup = browser.get_current_page()
     form = browser.select_form()
-    find = soup.find('button', id='search_button')		# button for finding location
+    find = soup.find('button', id='search_button')        # button for finding location
     location_inputs = soup.find_all('input', type=False)
     if not check_zip(location_inputs):
         # if zip code does not have a value: ask for address
@@ -202,31 +202,37 @@ def Step4(browser):
     form.choose_submit(find)
     browser.submit_selected()
 
-    
-def Step5(browser):
+# step 5
+def add_images(browser):
     """
     Step 5 - Add Images.
-        # look up how to use PyQt to upload images or drap and drop files
+        # look up how to use PyQt to upload images or drag and drop files
+
+    User is able to upload a total of 24 maximum images.
+    Upload the best image first - it will be featured. 
     """
     soup = browser.get_current_page()
     forms = soup.find_all('form')
 
     ans = ask_for_confirmation("Would you like to add images? ")
+    image_count = 0
     if ans:
-    	button = soup.find('button', class_="addbtn")	# button for adding images to form
-    	while ans:
-    		add_file(browser, button)					# add file to browser using button
-    		ans = ask_for_confirmation("Would you like to add another image? ")
+        print("Upload the best image first - it will be featured.")
+        button = soup.find('button', class_="addbtn")    # button for adding images to form
+        while ans and image_count < 24:
+            add_file(browser, button)            # add image (file) to browser using button
+            image_count = image_count + 1            
+            ans = ask_for_confirmation("Would you like to add another image? ")
 
     # continues on to next step
-    #form = browser.select_form('form',2)        # third form on page; done with images
-    form = browser.select_form(form_no_class(forms))
+    #form = browser.select_form('form',2)        # third form on page; 'done with images'
+    form = browser.select_form(form_without_class(forms))
     button = soup.find('button', attrs={'class':'done bigbutton'})
     form.choose_submit(button)
     browser.submit_selected()
 
-
-def Step6(browser):
+# step 6
+def edit_draft_of_posting(browser):
     """
     Step 6 - Unpublished Draft of Posting.
     
@@ -267,31 +273,31 @@ def Step6(browser):
     browser.submit_selected()
     goto_step(browser, button.text)
 
-
+# editing other pages (details, location, images)
 def goto_step(browser, text):
     """
     Takes the user back to different steps depending on editing choice.
 
     Depending on text given, this function will call:
-        Step3
-        Step4
-        Step5
-    After the step function is called, Step6 is called again
+        add_details
+        add_location
+        add_images
+    After the step function is called, edit_draft_of_posting is called again
         going back to the draft, to ask the user 
         if they would like to edit anything else
     # Edit step functions to allow users to edit the available information
     """
     if text == 'edit post':
-        Step3(browser)
-        Step6(browser)
+        add_details(browser)
+        edit_draft_of_posting(browser)
     elif text == 'edit location':
-        Step4(browser)
-        Step6(browser)
+        add_location(browser)
+        edit_draft_of_posting(browser)
     elif text == 'edit images':
-        Step5(browser)
-        Step6(browser)
+        add_images(browser)
+        edit_draft_of_posting(browser)
     else:
-        # not editing post, location or imags
+        # not editing post, location or images
         # page was already submitted so do nothing
         print("Further Action Required To Complete Request")
         print("You should receive an email shortly, with a link to:")
@@ -346,9 +352,9 @@ def capitalize_each_word(string1):
         if (x == 0) or (string1[x-1] == ' '):
             string1 = string1[:x] + string1[x].upper() + string1[x+1:]
 
-def capitalize_each_word2(string_):
+def capitalize_each_word2(a_string):
     new_string = ""
-    for word in string_.split():
+    for word in a_string.split():
         new_string = new_string + word + " "
     return new_string
 
@@ -389,111 +395,239 @@ def return_groups(tags):
             #print("\t\t " + name)
     return names
 
-# STEP 3 - FUNCTIONS
-def list_inputs(ilist):
-    """
-    Returns a list of input tags and their name attributes.
+def give_radio_options(browser):
+	"""
+	Returns a dictionary with a name attribute as key and a value determined by user.
+		ex: return {name_attr:value}
+			name_attr = 'id'
+			value = 'res'
+	"""
+	soup = browser.get_current_page()
+    span_left = soup.find_all('span',class_="left-side") # contains radio buttons for options
+    span_right = soup.find_all('span',class_="right-side")	# contains tags that have text for options
 
-        ilist = ResulSet of input tags
-    Create a list that contains input tags:
-        [(tag, {tag_name_attr:value}), (tag, {tag_name:value})]
-    """
-    input_list = []
-    value = ''
-    for item in ilist:
-        name = item.get_attribute_list('name')[0]
-        input_list.append([item, {name:""}])
-    return input_list
-    
-def dict_inputs(ilist):
-    """
-    Returns a dictionary of input tags' name attributes and their values.
+    options = tags_within_list_of_tags(span_left)    # list of radio button tags 
+    labels = labels_of_tags(span_right)            # list of text describing options
 
-        ilist = list of inputs
-    Returns a dictionary with values for inputs based on attribute name
-        {name:ans, name:value, name:value}
-    """
-    print("These are the input tags.")
-    input_ans_dict = {}
-    for item in ilist:
-        name = list(item[1])[0]
-        ans = input("Enter info for " + name + ": ")
-        input_ans_dict[name] = ans
-    return input_ans_dict
+    name_attr = options[0].get_attribute_list('name')		# name attribute of radio button
+    name_attr = put_strings_together_from_list(name_attr)
 
-def set_inputs(form, idict):
+    print("These are the options for the categories (marked with **): ")
+    for x in range(len(options)):
+    	value = options[x].get_attribute_list('value') # value for radio button
+        value = put_strings_together_from_list(value)	# related to label of same index
+        print("\t*" + labels[x] + "*\t\twith a value of: " + value)
+    user_ans = input("Enter either the type of posting or the value: ")
+
+    if len(user_ans) < 4:
+    	# user inputted value instead of label
+    	# all values are less than 4 characters
+        return {name_attr:user_ans}
+    else:
+        for label in labels:
+            if user_ans.lower() in label:
+                label_index = labels.index(label)
+                value = options[label_index].get_attribute_list('value')
+                value = put_strings_together_from_list(value)
+                return {name_attr:value}
+        print("Inputted value does not refer to anything.")
+    # not the best return
+    return {name_attr:user_ans}
+
+# STEP 1 - Choose Type of Posting - FUNCTIONS
+def labels_of_tags(tags):
+    """Returns a list of strings containing text for options."""
+    text_list = []
+    for tag in tags:
+        text = take_out_whitespace_at_start_and_end(tag.text)
+        text = take_out_non_space_whitespace(text)
+        text_list.append(text)
+    return text_list
+
+def tags_within_list_of_tags(tags):
     """
-    Sets the input tag value for the tag with name attribute 'key'.
-    Special case for inputting the description, which is a textarea tag.
-        name attribute of this textarea tag = "PostingBody"
+    Returns a list of tags.
+
+    From a given list of tags, 
+    find the children of each tag and if the child is a tag,
+    then add it to list.
     """
-    print("Inputting in the values.")
-    for key in idict:
-        if key != 'PostingBody':
-            dict_input = {key:idict[key]}
-            form.set_input(dict_input)
+    tag_list = []
+    for tag in tags:
+        for child in tag.children:
+            if type(child) == type(tags[0]):
+                tag_list.append(child)
+    return tag_list
+
+def take_out_non_space_whitespace(text):
+    """Takes out whitespace that isn't a space ' '."""
+    whitespace = ['\n','\t','\r','\x0b','\x0c']
+    while has_non_space_whitespace(text):
+        for x in whitespace:
+            text_index = text.find(x)
+            if text_index != -1:
+                text = text[:text_index] + text[text_index+1:]
+    return text
+
+def has_non_space_whitespace(text):
+    """Returns True if text has non-space whitespace."""
+    whitespace = ['\n','\t','\r','\x0b','\x0c']
+    for x in whitespace:
+        if x in text:
+            return True
+    return False
+
+def take_out_whitespace_at_start_and_end(text):
+    """Takes out whitespace at the start and end of a text."""
+    whitespace = ['\n','\t',' ']
+    while starts_or_ends_with_whitespace(text)
+        for x in whitespace:
+            if text.startswith(x):
+                text = text[1:]
+            if text.endswith(x):
+                text = text[:-1]
+    return text
+
+def starts_or_ends_with_whitespace(text):
+	"""Returns True if text starts or ends with whitespace."""
+    whitespace = ['\n','\t',' ','\r','\x0b','\x0c']
+    for x in whitespace:
+    	if text.startswith(x):
+    		return True
+    	elif text.endswith(x):
+    		return True
+    return False
+
+# STEP 3 - Add Details - FUNCTIONS
+    # dictionary from list of tags
+def dict_from_list(tags):
+    """
+    Returns a dictionary containing tag name attributes (attrs) and their values.
+
+    tags = list of tags with the same tag name.
+    Depending on name of tags (i.e. <input>, <select>):
+        a different function is called to return a dictionary from the given list of tags.
+        If the names of the tags are select (i.e. <select>):
+            dict_of_select_options() is called on the list
         else:
-            dict_input = {key:idict[key]}
-            form.set_textarea(dict_input)
-
-def list_selects(slist):
+            dict_of_tag_name_attrs_and_values()
     """
-    Returns a list of select tags with their name attributes.
+    print("These are *" + tags[0].name + "* tags.")
+    if tags[0].name == 'select':
+        return dict_of_select_options(tags)
+    else:
+        return dict_of_tag_name_attrs_and_values(tags)
 
-    # create a list that contains select tags and their options:
-    # [(tag, {tag_name_attr:choices}, {choice1:value1, choice2:value2}), 
-    #  (tag, {tag_name:choices}, {choice1:value1, choice2:value2})]
-    # 1st position == tag itself
-    # 2nd position == dictionary of tag attribute name:choices
-    # 3rd position == dictionary of choices and their actual value
+def dict_of_tag_name_attrs_and_values(tags):
     """
-    select_list = []
-    for item in slist:
-        choices = []
-        dict_choices = {}
-        for child in item.children:
-            if child.string != '\n':
-                choices.append(child.string)
-            if str(type(child)) == "<class 'bs4.element.Tag'>":
-                value = child.get_attribute_list('value')[0]            
-                dict_choices[child.string] = value
-        name = item.get_attribute_list('name')[0]
-        select_list.append([item, {name:choices}, dict_choices])
-    return select_list
+    Returns a dictionary containing the name attributes of tags and their values.
 
-def dict_selects(slist):
+    Given a list of tags, tags:
+        Find the name attribute of a tag
+        Find the value of the tag.
+        Add the name attribute and value to the dictionary (tag_dict)
+    ex: tag_dict = {'name':value, 'name':value}
     """
-    Returns a dictionary of select tags' name attributes and their values.
+    tag_dict = {}
+    for tag in tags:
+        name = tag.get_attribute_list('name')
+        name = put_strings_together_from_list(name)
 
-    slist - list of: select tags, their name attributes, and their choices
-        ex: [(tag, {tag_name_attr:choices}, {choice1:value1, choice2:value2}), 
-            (tag, {tag_name:choices}, {choice1:value1, choice2:value2})]
-            # within an index of slist:
-                # 1st position == tag itself
-                # 2nd position == dictionary of tag attribute name:choices
-                # 3rd position == dictionary of choices and their actual value
-        
-    Returns a dictionary with values for select tags
+        value = tag.get_attribute_list('value')
+        if type(value[0]) == type(None):        # tag does not have 'value' attribute
+            tag_dict[name] = ""
+        else:
+            value = put_strings_together_from_list(value)
+            tag_dict[name] = value
+    return tag_dict
+
+def dict_of_select_options(tags):
     """
-    print("These are the select tags and their options.")
-    select_ans_dict = {}
-    for item in slist:
-        name = list(item[1])[0]     # gets key values of dictionary as a list
+    Returns a dictionary of dictionaries.
+
+    Given a list of tags.
+    The main dictionary contains the tags' name attributes (as keys) and their values = their choices.
+    the values are a dictionary themselves, containing the choices and their actual value in the tag. 
+        ex: returns {tag_name_attr:{choices}, tag_name:choices}
+            # dictionary of options and their 'actual' values (for selecting them)
+            choices = {'choice1':'value1', 'choice2':'value2'}  
+    """
+    tag_dict = {}
+    for tag in tags:
+        choices = {}
+        name = tag.get_attribute_list('name')
+        name = put_strings_together_from_list(name)
+        for child in tag.children:
+            if (str(type(child)) == "<class 'bs4.element.Tag'>") and (child.string != '\n'):
+                value = child.get_attribute_list('value')        # actual value for given option
+                value = put_strings_together_from_list(value)    # (child.string = option)
+                choices[child.string] = value
+        tag_dict[name] = choices
+    return tag_dict
+
+    # user inputs
+def user_dict_of_inputs(tag_dict):
+    """Returns a dictionary containing user inputs for tags."""
+    name = list(tag_dict)[0]        # the value of the given dictionary (tag_dict)
+    if type(tag_dict[name]) == type({}):     # if the value is a dictionary then it holds options for a select tag.
+        return dict_of_user_select_values(tag_dict)
+    else:
+        return dict_of_user_values(tag_dict)
+
+def dict_of_user_values(tag_dict):
+    """
+    Return a dictionary containing the user inputted values.
+    
+    tag_dict = {'name_attr':value, 'name_attr':value}
+    Given a dictionary of tag name attributes and their values (tag_dict),
+        if a value is not empty (""), 
+            then the user has the opporunity to keep the value or enter a new one.
+        if a value is empty,
+            then the user enters a value for themselves (can be empty, unless stated)
+    user_dict = {'name_attr':'user_input', 'name_attr':'user_input'}
+    Returns a dictionary of tag name attributes and the user's inputs as values. 
+    """
+    user_dict = {}
+    for name in tag_dict:
+        if tag_dict[name] != "":    # name attribute already has a value associated with it
+            text = "This tag already has a value of '" + str(tag_dict[name]) + "' for " + name
+            text = text + ". Would you like to keep it? "
+            ans = ask_for_confirmation(text)
+            if ans:                         # user wants to keep value already there
+                user_dict[name] = tag_dict[name]
+            else:
+                user_dict[name] = input("Enter info for " + name + ": ")
+        else:
+            user_dict[name] = input("Enter info for " + name + ": ")
+    return user_dict
+
+def dict_of_user_select_values(tag_dict):
+    """
+    Returns a dictionary containing the user selected values.
+    
+    tag_dict = {tag_name_attr:choices, tag_name:options}
+        option = {'option1':'value1', 'option2':'value2'}
+    Given a dictionary, tag_dict, of tag name attributes and their options,
+    the options dictionary gives the actual value of the chosen option.
+    
+    ex: return user_dict = {'name_attr':'value','name_attr':'value'}
+    """
+    user_dict = {}
+    for name in tag_dict:
         print("Options for " + name + ": ")
-        select_options = item[1][name]
-        for option in select_options:
-            print(option)
-        ans = input("Enter the desired option: ")
-        actual_value = item[2][ans]
-        select_ans_dict[name] = actual_value
-    return select_ans_dict
+        select_options = tag_dict[name]             # dictionary of options
+        for option in select_options:               # lists the options for a given select tag
+            print("\t" + option)
+        user_ans = input("Enter the desired option: ")
+        user_dict[name] = tag_dict[name][user_ans]          # the actual value of user input
+    return user_dict
 
-def set_selects(form, sdict):
-    """Set the value for select tag with name attribute 'key'."""
-    print("Choosing the options.")
-    for key in sdict:
-        dict_select = {key:sdict[key]}
-        form.set_select(dict_select)
+    # inputting user info
+def set_user_inputs(form, user_dict):
+    """Sets the values, given from user_dict, inside form."""
+    print("Inputting the values.")
+    for name in user_dict:
+        form.set(name, user_dict[name])
 
 def not_radio(type_):
     return type_ and not type_ == 'radio'
@@ -501,10 +635,10 @@ def not_radio(type_):
 def not_hidden(type_):
     return type_ and not type_ == 'hidden'
 
-def Step3_enter_needed_info(browser):
+def add_needed_details(browser):
     """Subsitute for Step 3 - Quick Information Input."""
     form = browser.select_form()
-    info_input = {'PostingTitle':'Selling PS4', 'price':200, 'postal':70808, 'FromEMail':'emailtimenow@protonmail.com'}
+    info_input = {'PostingTitle':'Selling PS4', 'price':200, 'postal':70808, 'FromEMail':'email@protonmail.com'}
     description = {'PostingBody':'Selling PS4 for $200'}
     info_select = {'language':'5', 'condition':'10'}
     form.set_input(info_input)
@@ -512,7 +646,24 @@ def Step3_enter_needed_info(browser):
     form.set_select(info_select)
     submit(browser)
 
-# STEP 4 - FUNCTIONS
+def check_details_for_error(browser):
+    """
+    Checks that the required details were entered. 
+
+    Returns False for no missing information. 
+    Returns True for missing information.
+    """
+    soup = browser.get_current_page()
+    highlight_error =  soup.find('div', class_="highlight")
+    if type(highlight_error) == type(None):
+        return False
+    for child in highlight_error.children:
+        if type(child) == type(highlight_error):
+            print(child.text)
+    return True
+
+
+# STEP 4 - Add Location - FUNCTIONS
 def check_zip(ilist):
     """ 
     Returns True or False depending on existence of postal code.
@@ -544,7 +695,6 @@ def list_inputs_keep_value(ilist):
         value = item.get_attribute_list('value')
         if value[0] != None:
             value_string = put_strings_together_from_list(value)
-            value_string = remove_trailing_whitespace(value_string)
             input_list.append([item, {name:value_string}])
         else:
             input_list.append([item, {name:""}])
@@ -564,27 +714,51 @@ def dict_inputs_keep_value(ilist):
     for item in ilist:
         name = list(item[1])[0]
         if item[1][name] == "":
-            ans = input("Enter info for " + name + ": ")
-            input_ans_dict[name] = ans
+            input_ans_dict[name] = input("Enter info for " + name + ": ")
         else:
             input_ans_dict[name] = item[1][name]
     return input_ans_dict
 
-def put_strings_together_from_list(list_):
-    """Return a string comprised from list indices. List must be comprised of strings."""
+def put_strings_together_from_list(a_list):
+    """
+    Return a string comprised from list indices. List must be comprised of strings.
+    """
     text = ""
-    for string_ in list_:
-        text = text + string_ + " "
-    return text
+    if is_every_index_a_string(a_list):
+        for value in a_list:
+            text = text + value + " "
+        text = remove_trailing_whitespace(text)
+        return text
+    else:
+        print("This list contains an element that is not a string.")
+        ans = ask_for_confirmation("Would you like to keep the first element? ")
+        if ans:
+            return a_list[0]
+        else:
+            return a_list
 
-def remove_trailing_whitespace(string_):
-    """Removes trailing whitespace in a string."""
-    if string_.endswith(" "):
-        string_ = string_[:-1]
-    return string_
+def remove_trailing_whitespace(a_string):
+    """
+    Remove trailing whitespace in a string.
+    """
+    if type(a_string) != str:
+        print("Argument is not a string.")
+        return a_string
+    elif a_string.endswith(" "):
+        a_string = a_string[:-1]
+    return a_string
 
-# STEP 5 - FUNCIONS
-def form_no_class(forms_list):
+def is_every_index_a_string(a_list):
+    """
+    Returns True if every element in a_list is a string. Otherwise returns False.
+    """
+    for item in a_list:
+        if type(item) != str:
+            return False
+    return True
+
+# STEP 5 - Add Images - FUNCIONS
+def form_without_class(forms_list):
     """ 
     Step 5 Function - Find Form Tag Without A Class. 
 
@@ -599,268 +773,54 @@ def form_no_class(forms_list):
     return form
 
 def ask_for_confirmation(text):
-	"""Ask a user if they would like to do something or not. Returns True or False."""
-	affirmative = ['yes','ya','ye','oui','si', 'mhm', 'mmhmm']
-	answer = input(text)
-	if answer in affirmative:
-		return True
-	else:
-		return False
+    """Ask a user if they would like to do something or not. Returns True or False."""
+    affirmative = ['yes','ya','ye','y','oui','si','mhm','mmhmm']
+    answer = input(text)
+    if answer in affirmative:
+        return True
+    else:
+        return False
 
 def determine_tag_within(tag, tag_name, distinction):
-	"""
-	Finds the tag that fits within the given parameters.
+    """
+    Finds the tag that fits within the given parameters.
 
-	CURRENTLY DOES NOT WORK; does not really find the tag.
-	Given a tag containing other tags, desired tag name and distinction.
-		a distinction being: type="whatever", name="tagname"
-		a distinction will be put into a dictionary called attrs (attributes)
-
-	Return a tag fitting the description."""
-	attrs = distinction.split(" ")
-	# should take the string before the '=' as the key
-	# and the string after the '=' as the value.
-	for child in tag.children:
-		if type(child) == type(tag):
-			if child.name = tag_name:
-				for key in attrs:
-					if child.get_attribute_list(key)[0] == attrs[key]:
-						return child
-			if child.get_attribute_list('type')
+    CURRENTLY DOES NOT WORK; does not really find the tag.
+    Given a tag containing other tags, desired tag name and distinction.
+        a distinction being: type="whatever", name="tagname"
+        a distinction will be put into a dictionary called attrs (attributes)
+    Return a tag fitting the description.
+    """
+    attrs = distinction.split(" ")
+    # should take the string before the '=' as the key
+    # and the string after the '=' as the value.
+    for child in tag.children:
+        if type(child) == type(tag):
+            if child.name == tag_name:
+                for key in attrs:
+                    if child.get_attribute_list(key)[0] == attrs[key]:
+                        return child
+            #if child.get_attribute_list('type')
 
 def add_file(browser, button):
-	"""
-	Adds a file to a form.
-	
-	Given a browser and its button associated with the submission of a file.
-	Find the form that the button is held in and find the input tag with type="file".
-	Once the input tag is found, use the form to set the value to the file path.
-	"""
-	path_to_file = input("Copy and Paste the file location.")
-	form = browser.select_form(button.parent)			# select form containing button
-	for child in form.children:
-		if type(child) == type(button):					# must be type 'bs4.element.Tag'
-			if child.get_attribute_list('type')[0] == 'file':		# tag must have type attribute = 'file'
-					# gets the name attribute of tag, in a list
-					name_attribute = child.get_attribute_list('name')
-					name_attribute = remove_trailing_whitespace(put_strings_together_from_list(name_attribute))
-					break
-	form.set(name_attribute, path_to_file)		# add file to form
-	form.choose_submit(button)					# button for adding files (not submiting whole page)
-	browser.submit_selected()
-	print("File: " + path_to_file + " has been added.")
-	return None
-
-
-########################## Drop Down List #########################
-# Selects Options in DropDown   
-def select_opt(browser):
-    soup = browser.get_current_page()
-    form = browser.select_form()
-    select_tags = soup.find_all('select')        # 11 on Create Posting
-    tag_inputs = dropdown(select_tags)
-    print(tag_inputs)
+    """
+    Adds a file to a form.
     
-def dropdown(tags):
+    Given a browser and its button associated with the submission of a file.
+    Find the form that the button is held in and find the input tag with type="file".
+    Once the input tag is found, use the form to set the value to the file path.
     """
-    Returns a dictionary {tag_name-attribute:real_value, ...}
-        for ex: {'language':'2', 'condition':'10', ...}
-            # 'language':'2'    refers to 'ca'
-            # 'condition':'10'  refers to 'new'
-
-     give_dropdown_options(tag):
-        prints options          # for ex: 'language' options are: 'af','ca','da','de','en'
-        return user's input     # for ex: user_input = 'en' for english
-        
-     get_values(tag):
-        creates a dictionary of a tag's options:  string to values 
-            # for ex: {'ca':'2', 'en':'5',...}
-        return dictionary of option strings and values
-     
-     tag_dict[tag_name] = real_values[user_input] 
-        # {'language':'5', 'condition':'10',...
-    """
-    tag_dict = {}
-    real_values = {}
-    for tag in tags:
-        try:
-            tag_name = tag.get_attribute_list('name')[0]
-            user_input = give_dropdown_options(tag)
-            print("Chosen option for " + tag_name + "is: " + user_input)
-            real_values = get_values(tag)                   # gives real values for available dropdown
-                                                              # options, e.g. 'en' has a value of '5'
-            tag_dict[tag_name] = real_values[user_input]    # throw in user_input as key to get 
-                                                              # real value as above ^
-        except KeyboardInterrupt:
-            print("Interupted!")
-            print("Continue with return, please.")
-            break
-        except Exception as err:
-            print("Exception occured: " + str(err))
-    return tag_dict
-
-def give_dropdown_options(tag):
-    """
-    Prints dropdown options
-    Return the user's input for drop down options
-    """
-    undesirable = ['\n','-']
-    list_ = []
-    print("These are your options for: " + tag.get_attribute_list('name')[0])
-    for child in tag.children:
-        if child.string not in undesirable:
-            list_.append(child.string)
-    for y in range(len(list_)):
-        print("\t"+ list_[y])
-    ans = input("Enter the desired option: ")
-    #if len(ans) != 2:              # this is for the language dropdown options
-        #ans = ans[:2]
-    return ans
-
-### get value from select options
-def get_values(tag):
-    """
-    Returns a dictionary {option_string:option_value, ...}
-        {'ca':'2', 'af':'1'
-    """
-    undesirable = ['\n','-']
-    list_ = []
-    dict_ = {}
-    for content in tag.contents:
-        if content not in undesirable:
-            if '-' not in content:
-                list_.append(content)
-    for x in range(len(list_)):
-        dict_[list_[x].string] = list_[x].get_attribute_list('value')[0]
-    return dict_
-
-###########################################################################################
-############################    Functions With Comments    ################################
-
-def _Step3(browser):
-    """ 
-    Step 3 - Create Posting - Enter Details 
-    """
-    soup = browser.get_current_page()
-    form = browser.select_form()
-    inputs = soup.find_all('input',class_=re.compile("json-form-input"),type=not_radio)        # input tags
-    description = soup.find('textarea',class_=re.compile("json-form-input"))    # description input
-    selects = soup.find_all('select',class_=re.compile("json-form-input"))      # select tags
-    # create a list that contains input tags:
-        # [(tag, {tag_name_attr:value}), (tag, {tag_name:value})]
-    # list of inputs
-    input_list = list_inputs(inputs + [description])    # treating description as part of the inputs
-
-    ##### ADD MULTITHREADING #####
-    # create a list that contains select tags and their options:
-        # [(tag, {tag_name_attr:choices}, {choice1:value1, choice2:value2}), 
-        #  (tag, {tag_name:choices}, {choice1:value1, choice2:value2})]        
-    # list of selects:
-    select_list = list_selects(selects)
-
-    # start a new thread for multiprocessing
-    # once input answers are given, program can begin to input the text
-        # and continue to ask for inputs for select tags
-    input_ans_dict = dict_inputs(input_list)        # user inputs info for input tags
-
-    # start a new thread for multiprocessing
-    select_ans_dict = dict_selects(select_list)     # user inputs info for select tags
-    
-    # set the input tag value for the tag with name attribute 'key'
-    set_inputs(form, input_ans_dict)
-    set_selects(form, select_ans_dict)
-    
-    # have to choose a privacy option for email
-    email_privacy = {'Privacy':'C'} # CL mail relay (recommended)
-    form.set_radio(email_privacy)
-    
-    browser.launch_browser()
-    #window = createGUI(soup)
-    enter = input('Enter anything to continue')
-    submit(browser)
-    #lang = {'language':'5'}
-    #form.set_select(lang)       # select 'en' (value='5') within name="language"
-    
-    # search for check boxes later
-    # checkboxes = soup.find_all(type="checkbox")
-
-def _createGUI(soup):
-    """
-    Create a GUI for the tags with input forms
-        Make the GeneralDetails Inputs
-        Make the Grouping Widgets
-            Group tags with same names
-    Returns a Widget object
-    """
-    groupings = []
-    fields = soup.find_all('fieldset')
-    # MAIN WINDOW CREATED HERE
-    app = QApplication([])
-    post = GUI.PostWidget()             # create GeneralDetails Widget
-    # create Widget Groupings
-    for field in fields:                        # for each fieldset tag, make a Group Widget
-        groupings.append(GroupTags(field))  # add dictionary to list
-        # the main indexes of groupings, e.g. groupings[0], groupings[1], and so on.
-        #   are the dictionary themselves
-        #   to access information inside dictionary, enter command like this:
-        #     groupings[0]['select'] (first field accessing key 'select' to get list of select tags)
-        #     groupings[1]['input']  (second field accessing key 'input' to get list of input tags)
-    return groupings  # returns a list of dictionaries; each field (grouping) having its own dict
-
-def _GroupTags(field):
-    """
-    Create a Group Widget from field (tags)
-        for tags with a class containing "json-form-input"
-    """
-    tag_dict = group_tags(field)        # dictionary of tags; 
-    return tag_dict
-
-def _group_tags(field):
-    tags = []
-    tag_dict = {}
-    tag_names = ['input', 'select', 'textarea']
-    for name in tag_names:
-        tags.append(field.find_all(name, class_=re.compile("json-form-input")))
-        # each index of tags, has a list with tags named one of these:
-        #   input
-        #   select
-        #   textarea
-    tags = remove_empty_indexes(tags)                  # remove empty indexes in list
-    tag_names = print_groups(tags)              # gives index for tag_names
-    # creates dictionary of tag names and their respective tags
-    for index,key in enumerate(tag_names):  
-        tag_dict[key] = tags[index]
-        # {'tag name': [list of tags with 'tag name'], ... }
-        # ex:   {'input':[<input class="json-form-input"... />, ..., <input ... />],
-        #       'select': [<select class="json-form-input"...>, ... </select>] }
-    return tag_dict
-
-def _remove_empty_indexes(list1):
-    new_list = []
-    for x in range(len(list1)):
-        if len(list1[x]) != 0:
-            new_list.append(list1[x])
-    return new_list
-
-def _print_groups(tags):
-    """
-    Print the following:
-        This is the grouping for 'input' tags: 
-            auto_vin
-            ...
-        This is the grouping for 'select' tags:
-            language
-            ...
-    Returns a list with the tag name groups
-        names = ['input','select']
-        # giving the index of that tag's groupings
-    """
-    names = []
-    print("These are the groupings inside this field: ")
-    for x in range(len(tags)):
-        print("\tThis is the grouping for " + tags[x][0].name + " tags: ")
-        names.append(tags[x][0].name)                   # tag name; e.g. <input>
-        for y in range(len(tags[x])):
-            name = tags[x][y].get_attribute_list('name')[0] # tag attribute 'name='
-            print("\t\t " + name)
-    return names
+    path_to_file = input("Copy and Paste the file location.")
+    form = browser.select_form(button.parent)            # select form containing button
+    for child in form.children:
+        if type(child) == type(button):                    # must be type 'bs4.element.Tag'
+            if child.get_attribute_list('type')[0] == 'file':        # tag must have type attribute = 'file'
+                    # gets the name attribute of tag, in a list
+                    name_attribute = child.get_attribute_list('name')
+                    name_attribute = put_strings_together_from_list(name_attribute)
+                    break
+    form.set(name_attribute, path_to_file)        # add file to form
+    form.choose_submit(button)                    # button for adding files (not submiting whole page)
+    browser.submit_selected()
+    print("File: " + path_to_file + " has been added.")
+    return None
