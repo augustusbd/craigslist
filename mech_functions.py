@@ -4,6 +4,7 @@
 # Functions for Mechanical Soup 
 import mechanicalsoup
 import clbot_GUI as GUI
+import fields as fs
 import re, sys, threading
 from bs4 import BeautifulSoup
 
@@ -210,8 +211,7 @@ def add_details_to_post(browser):
     """
     form = browser.select_form()
 
-    user_inputs = input_values_for_add_details(browser) # dictionary of tag name attributes and values(= user inputs)
-    set_user_inputs(form, user_inputs)          # sets the user inputs into browser
+    input_details(browser)
     
     # have to choose a privacy option for email 
     email_privacy = {'Privacy':'C'} # CL mail relay (recommended)
@@ -425,10 +425,15 @@ def add_details_gaming(browser):
 
 
 ################################## GENERAL FUNCTIONS ######################################
+def merge_dict(dict1, dict2):
+	"""Merge two dictionaries together."""
+	res = {**dict1, **dict2}
+	return res
+
 def print_name_attrs(tags):
 	"""Prints the name attributes of the tags."""
-    for tag in tags:
-        print(tag.get_attribute_list('name'))
+	for tag in tags:
+		print(tag.get_attribute_list('name'))
 
 def get_name_attributes(tags):
 	"""Returns a list of name attributes from tags."""
@@ -454,6 +459,22 @@ def remove_tags_with_name_attributes(tags, exclude_values):
 		if value not in exclude_values:
 			new_tags.append(tag)
 	return new_tags
+
+def remove_tags_with_same_name_attr(tags):
+	"""Removes tags that have the same name attribute."""
+	new_tags = []
+	name_list = get_name_attributes(tags)
+	for tag in tags:
+		name = tag.get_attribute_list('name')
+		name = put_strings_together_from_list(name)
+		while name_list.count(name) > 1:	# removes duplicate names
+			name_list.remove(name)
+		if name in name_list:				# tag has name attribute in name list
+			new_tags.append(tag)			# only this tag can be added with this name attribute
+			name_list.remove(name)		# remove name from name list 
+											# no more tags with the same name can be added
+	return new_tags
+
 
 #### string functions #####
 def put_strings_together_from_list(a_list):
@@ -584,9 +605,9 @@ def ask_for_confirmation(text):
 # filter functions
 def fieldset_not_within_fieldset(tag):
 	"""Returns tag if it is a fieldset tag not within a fieldset tag."""
-    if tag.name == 'fieldset':
-        if tag.find_parent('fieldset') == None:
-            return tag
+	if tag.name == "fieldset":
+		if tag.find_parent('fieldset') == None:
+			return tag
 
 def not_hidden(a_type):
 	"""Returns a type that is not equal to hidden."""
@@ -708,26 +729,37 @@ def input_details(browser):
 	# input general details (Title, Description, Zip Code, etc.)
 	name_attrs = input_general_details(browser)		# list of name attributes
 
-	# split tags into their fieldsets
+	# input fieldset details ('posting details', 'contact info', 'location info')
+	name_attrs = input_fieldset_details(browser, name_attrs)
+
 	# leftover tags are put into their own "custom_fieldset"
-	fieldsets = soup.find_all(fieldset_not_within_fieldset)
-	fieldset_objects = fd.create_fieldset_objects(fieldsets)
-
-	for field in fieldset_objects:
-		subfield = field.find('fieldset')	# finds fieldset tag within fieldset tag
-		if subfield != None:
-			field.create_subfieldset(subfield)	# creates SubField using subfield
-
-		name_attrs = name_attrs + field.name_attributes # name attributes of tags used
-		field.input_values_for(field.tags)		# user input for tags inside field
-
-	# finds all inputs (type != hidden)
-	# (select tags don't matter because they are only within fieldset tags)
+		# finds all inputs (type != hidden)
+		# (select tags are only within fieldset tags)
 	custom_fieldset = soup.find_all('input', type=not_hidden)
 	custom_fieldset = remove_tags_with_name_attributes(custom_fieldset, name_attrs)
 
 	# what am I trying to do?
 
+def input_fieldset_details(browser, name_attrs):
+	"""User inputs details inside fieldset tags for post.
+
+	Returns a list of name attributes used.
+	"""
+	form = browser.select_form()
+	soup = browser.get_current_page()
+
+	# split tags into their fieldsets
+	fieldsets = soup.find_all(fieldset_not_within_fieldset)
+	fieldset_objects = fs.create_fieldset_objects(fieldsets, name_attrs)
+
+	for field in fieldset_objects:
+		name_attrs = name_attrs + field.return_name_attributes() # name attributes of tags used
+		user_inputs = field.input_values()	# user inputs for tags inside fieldset
+		user_inputs.update(field.input_other_values())
+
+		set_user_inputs(form, user_inputs)	# sets the user inputs into browser
+
+	return name_attrs
 
 def input_general_details(browser):
 	"""User inputs general details for post.
@@ -746,9 +778,9 @@ def input_general_details(browser):
 
 	for name in name_attributes:
 		tag = soup.find(attrs={'name':name})
-		if tag != None:							# found tag with 'name'=name
+		if tag != None:							# found a tag with name_attribute=name
 			name_attrs_used.append(name)		# adds name attribute to list
-			text = find_parent_sibling_text(tag)
+			text = find_parent_sibling_text(tag)	# returns string or None
 
 			if text != None:					# found text describing tag
 				user_input = input("Input {0}: ".format(text))
@@ -760,6 +792,7 @@ def input_general_details(browser):
 	return name_attrs_used
 
 
+# input details - functions
 def find_parent_sibling_text(tag):
 	"""Finds the parent's sibling that contains text that accompanies tag.
 	
@@ -771,7 +804,7 @@ def find_parent_sibling_text(tag):
 
 	Returns a string or None.
 	"""
-	if tag.name == 'textarea':	# tag doesn't have a similar parent tag as the others
+	if tag.name == 'textarea': # tag doesn't have a similar parent tag as the others
 		return find_siblings_text(tag)
 	else:
 		return find_siblings_text(tag.parent)
@@ -789,7 +822,7 @@ def find_siblings_text(tag):
 			return text 				# returns span tag's string; otherwise no return
 	
 	# next siblings
-	for sibling in parent.next_siblings:
+	for sibling in tag.next_siblings:
 		text = find_span_text(sibling)
 		if text != None:
 			return text
@@ -806,7 +839,7 @@ def find_span_text(sibling):
 	Returns a string or None.
 	"""
 	if str(type(sibling)) == "<class 'bs4.element.Tag'>":	# sibling is a Tag
-		span = sibling.find('span', class_="label")	# finds the span tag within sibling tag
+		span = sibling.find('span', class_=re.compile("label"))	# finds the span tag within sibling tag
 		if span != None:				
 			return span.text 			# return span tag's string if span tag exists
 	return None
@@ -834,12 +867,12 @@ def remove_tags_with_attribute(tags, exclude_values):
 
     return new_tags
 
-
-
 # get the user inputs for the tags
 def get_user_inputs_for(tags):
     """
     Returns a dictionary containing the tag name attributes and user's inputted values for those tags.
+    	dict_inputs = {name:value, name:value, name:options}
+    	user_input_dict ={'name_attr':'user_input', 'name_attr':'user_input'}
     """
     dict_inputs = dict_of_name_attributes_and_values_from(tags)
     user_input_dict = dict_of_user_inputs_from(dict_inputs)    # user inputs info for tags
@@ -847,26 +880,29 @@ def get_user_inputs_for(tags):
 
 # new dictionary of tags # 0
 def dict_of_name_attributes_and_values_from(tags):
-    """Returns a dictionary containing tag name attributes and their values."""
-    tag_dict = {}
+    """Returns a dictionary containing tag name attributes and their values.
 
+    if 'select' tag:
+    	dict_of_select(tag) = {name:options}
+			options = {'choice1':'value1', 'choice2':'value2'}
+	else:
+		dict_of_general_input(tag) = {name:value}
+
+	tag_dict = {name:value, name:value, name:options}
+    """
+    tag_dict = {}
     for tag in tags:
-        tag_dict.update( dict_of_tag(tag) )
+    	print("\t\t**" + tag.name + "** tag.")
+
+    	if tag.name == 'select':
+    		tag_dict.update( dict_of_select(tag) )
+
+    	else:
+    		tag_dict.update( dict_of_general_input(tag) )
 
     return tag_dict
 
-# 0 > 1
-def dict_of_tag(tag):
-    """ Returns a dictionary containing the name attribute and corresponding value of a tag."""
-    print("\t\t**" + tag.name + "** tag.")
-
-    if tag.name == 'select':
-        return dict_of_select(tag)
-
-    else:
-        return dict_of_general_input(tag)
-
-# 1 > 2.1
+# 0 > 1.1
 def dict_of_general_input(tag):
     """
     Returns a dictionary of tag's name attribute and value associated with it.
@@ -886,7 +922,7 @@ def dict_of_general_input(tag):
 
     return {name:value}
 
-# 1 > 2.2
+# 0 > 1.2
 def dict_of_select(tag):
     """
     Returns a dictionary of tag's name attribute and options associated with tag.
@@ -900,7 +936,7 @@ def dict_of_select(tag):
 
     return {name:options}
 
-# 2.2 > 2.2.1
+# 1.2 > 1.2.1
 def dict_options_of_select_tag(tag):
     """Returns a dictionary of options.
 
@@ -917,7 +953,7 @@ def dict_options_of_select_tag(tag):
 
     return options
 
-# new dictionary of user inputs # 0
+# new dictionary of user inputs # 00
 def dict_of_user_inputs_from(a_dict):
     """
     Returns a dictionary containing user inputs for tags.
@@ -933,7 +969,7 @@ def dict_of_user_inputs_from(a_dict):
 
     return tag_dict
 
-# 0 > 1
+# 00 > 1
 def user_input_for(name, value):
     """Returns a dictionary containing a tag's name attribute and user input for it."""
     if type(value) == type({}):
@@ -948,7 +984,7 @@ def user_input_for(name, value):
 # 1 > 2.1
 def user_general_input(name, value):
     """Returns the user's input for a tag with name attribute = name."""
-    if value != "":
+    if len(value) > 1:
         info_text = "This tag already has a value of '" + value + "' for " + name + "."
         print(info_text)
         confirmed = ask_for_confirmation("Would you like to keep it? ")
@@ -992,7 +1028,10 @@ def print_options(options):
 
 # inputting user info
 def set_user_inputs(form, user_dict):
-    """Sets the values, given from user_dict, inside form."""
+    """Sets the values, given from user_dict, inside form.
+	
+	user_dict = {'name_attr':'user_input', 'name_attr':'user_input'}
+    """
     print("Inputting the values.")
     for name in user_dict:
         form.set(name, user_dict[name])
@@ -1044,12 +1083,13 @@ def details_have_missing_information(browser):
     return True
 
 def input_missing_details(browser):
-    form = browser.select_form() 
-    info_input = {'FromEMail':'email@protonmail.com'}
-    email_privacy = {'Privacy':'C'}
-    form.set_input(info_input)
-    form.set_radio(email_privacy)
-    submit(browser)
+	browser.launch_browser()
+	form = browser.select_form()
+	info_input = {'FromEMail':'email@protonmail.com'}
+	email_privacy = {'Privacy':'C'}
+	form.set_input(info_input)
+	form.set_radio(email_privacy)
+	submit(browser)
 
 # STEP 4 - Add Location - FUNCTIONS
 def location_is_set(ilist):
