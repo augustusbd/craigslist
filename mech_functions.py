@@ -113,6 +113,19 @@ def submit(browser):
 
 
 # quick walkthrough
+def game_post(browser):
+    """Quick Way to move through steps while debugging."""
+    try:
+        choose_type_of_posting_gaming(browser)
+        print("Step 1 - Choose Type of Posting")
+
+        choose_category_gaming(browser)
+        print("Step 2 - Choose A Category")
+
+    except Exception as err:
+        print("An exception occurred: " + str(err))
+    return None
+
 def gaming_post(browser):
     """Quick Way to move through steps while debugging."""
     try:
@@ -413,8 +426,34 @@ def add_details_gaming(browser):
 
 ################################## GENERAL FUNCTIONS ######################################
 def print_name_attrs(tags):
+	"""Prints the name attributes of the tags."""
     for tag in tags:
         print(tag.get_attribute_list('name'))
+
+def get_name_attributes(tags):
+	"""Returns a list of name attributes from tags."""
+	name_list = []
+	for tag in tags:
+		name = tag.get_attribute_list('name')
+		name = put_strings_together_from_list(name)
+		name_list.append(name)
+	return name_list
+
+def remove_tags_with_name_attributes(tags, exclude_values):
+	"""Remove tags from a list of tags using an attribute as a filter.
+
+	The tag with a name attribute that is in exlcude_values,
+	will not be added to the new list of tags. 
+	
+	Returns a list of tags that do not have a name attribute in exlcude_values
+	"""
+	new_tags = []
+	for tag in tags:
+		value = tag.get_attribute_list('name')
+		value = put_strings_together_from_list(value)
+		if value not in exclude_values:
+			new_tags.append(tag)
+	return new_tags
 
 #### string functions #####
 def put_strings_together_from_list(a_list):
@@ -544,15 +583,17 @@ def ask_for_confirmation(text):
 #### soup.find_all() filter functions ####
 # filter functions
 def fieldset_not_within_fieldset(tag):
+	"""Returns tag if it is a fieldset tag not within a fieldset tag."""
     if tag.name == 'fieldset':
         if tag.find_parent('fieldset') == None:
             return tag
-    return tag and not str(tag)
+
+def not_hidden(a_type):
+	"""Returns a type that is not equal to hidden."""
+	return a_type != "hidden"
 
 
-
-
-
+################################## STEP FUNCTIONS ######################################
 # STEP 1 - Choose Type of Posting - FUNCTIONS
 def text_from_tags(tags):
     """Returns a list of strings containing text for options."""
@@ -660,53 +701,115 @@ def determine_user_input_for_radio_button(user_input, tag_list):
     return {}           # form.set_radio() uses a dictionary as its argument
 
 # STEP 3 - Add Details - FUNCTIONS
-
-
 def input_details(browser):
-    """User inputs values for page."""
-    soup = browser.get_current_page()
+	"""User inputs values for page."""
+	soup = browser.get_current_page()
 
-    # input general details (Title, Description, Zip Code, etc.)
-    name_attrs = input_general_details(browser)     # dictionary of name attributes 
-    
-    # tags with some sort of inputs 
-    tags = soup.find_all(class_=re.compile("json-form-input"))  
-    tags = remove_tags_with_attribute(tags, name_attrs)
+	# input general details (Title, Description, Zip Code, etc.)
+	name_attrs = input_general_details(browser)		# list of name attributes
 
-    # split tags into their fieldsets
-    # leftover tags are put into their own "custom_fieldset"
-    fieldsets = soup.find_all(fieldset_not_within_fieldset)
-    fieldset_objects = fd.create_fieldset_objects(fieldsets)
+	# split tags into their fieldsets
+	# leftover tags are put into their own "custom_fieldset"
+	fieldsets = soup.find_all(fieldset_not_within_fieldset)
+	fieldset_objects = fd.create_fieldset_objects(fieldsets)
 
-    for field in fieldset_objects:
-        field.input_values_for(field.tags)
+	for field in fieldset_objects:
+		subfield = field.find('fieldset')	# finds fieldset tag within fieldset tag
+		if subfield != None:
+			field.create_subfieldset(subfield)	# creates SubField using subfield
 
-    custom_fieldset = []
+		name_attrs = name_attrs + field.name_attributes # name attributes of tags used
+		field.input_values_for(field.tags)		# user input for tags inside field
+
+	# finds all inputs (type != hidden)
+	# (select tags don't matter because they are only within fieldset tags)
+	custom_fieldset = soup.find_all('input', type=not_hidden)
+	custom_fieldset = remove_tags_with_name_attributes(custom_fieldset, name_attrs)
+
+	# what am I trying to do?
 
 
 def input_general_details(browser):
-    """User inputs general details for post.
+	"""User inputs general details for post.
+	
+	Sets the values for the name attributes with user input.
+	Returns a dictionary of name attributes that were used to set a value.
+		# not all name attributes will be on page
+	"""
+	form = browser.select_form()
+	soup = browser.get_current_page()
 
-    Sets the values for the name attributes with user input.
-    Returns a dictionary of name attributes that were used to set a value.
-        # not all name attributes will be on page
-    """
-    form = browser.select_form()
-    soup = browser.get_current_page()
+	# tag name attributes
+	name_attributes = ['PostingTitle', 'price','GeographicArea',
+	'postal','FromEMail','PostingBody']
+	name_attrs_used = []		# actual list of name attributes used
 
-    # tag name attributes
-    name_attributes = ['PostingTitle', 'price','GeographicArea',
-    'postal','FromEMail','PostingBody']
-    name_attrs_used = []
+	for name in name_attributes:
+		tag = soup.find(attrs={'name':name})
+		if tag != None:							# found tag with 'name'=name
+			name_attrs_used.append(name)		# adds name attribute to list
+			text = find_parent_sibling_text(tag)
 
-    for name in name_attributes:
-        tag = soup.find(attrs={'name':name})
-        if tag != None:
-            name_attrs_used.append(name)
-            user_input = input("Input " + name + ": ")
-            form.set(name, user_input)
+			if text != None:					# found text describing tag
+				user_input = input("Input {0}: ".format(text))
 
-    return {'name':name_attrs_used}
+			else:
+				user_input = input("Input " + name + ": ")
+
+			form.set(name, user_input)			# sets the user's input for tag
+	return name_attrs_used
+
+
+def find_parent_sibling_text(tag):
+	"""Finds the parent's sibling that contains text that accompanies tag.
+	
+	This is for Step 3 - Add Details to Post
+	Tries to find the span tag with class="label" that describes the tag given.
+
+	the 'textarea' tag does not have a similar parent tag structure as the others.
+	so, the function 'find_siblings_text' is called on itself.
+
+	Returns a string or None.
+	"""
+	if tag.name == 'textarea':	# tag doesn't have a similar parent tag as the others
+		return find_siblings_text(tag)
+	else:
+		return find_siblings_text(tag.parent)
+
+
+def find_siblings_text(tag):
+	"""Given a tag, go through its previous and next siblings to find a span tag.
+	
+	Returns a string or None.
+	"""
+	# previous siblings
+	for sibling in tag.previous_siblings:
+		text = find_span_text(sibling)	# determines if sibling is a tag
+		if text != None:				# (if sibling is a tag and has a span tag)
+			return text 				# returns span tag's string; otherwise no return
+	
+	# next siblings
+	for sibling in parent.next_siblings:
+		text = find_span_text(sibling)
+		if text != None:
+			return text
+	return None
+
+
+def find_span_text(sibling):
+	"""Returns a span tag's text if the sibling is a tag. 
+
+	Given a tag's sibling, determine if said sibling is a tag itself.
+		if so, find a span tag with class="label".
+		if a span tag is found, return the text accompanying it.
+	
+	Returns a string or None.
+	"""
+	if str(type(sibling)) == "<class 'bs4.element.Tag'>":	# sibling is a Tag
+		span = sibling.find('span', class_="label")	# finds the span tag within sibling tag
+		if span != None:				
+			return span.text 			# return span tag's string if span tag exists
+	return None
 
 def remove_tags_with_attribute(tags, exclude_values):
     """Remove tags from a list of tags using an attribute as a filter.
@@ -742,8 +845,7 @@ def get_user_inputs_for(tags):
     user_input_dict = dict_of_user_inputs_from(dict_inputs)    # user inputs info for tags
     return user_input_dict
 
-# new dictionary of tags
-# 0
+# new dictionary of tags # 0
 def dict_of_name_attributes_and_values_from(tags):
     """Returns a dictionary containing tag name attributes and their values."""
     tag_dict = {}
@@ -815,8 +917,7 @@ def dict_options_of_select_tag(tag):
 
     return options
 
-# new dictionary of user inputs
-# 0
+# new dictionary of user inputs # 0
 def dict_of_user_inputs_from(a_dict):
     """
     Returns a dictionary containing user inputs for tags.
