@@ -1,12 +1,15 @@
 #! /usr/bin/python3
 
 # Craigslist Bot 
-# Functions for Mechanical Soup 
+# Functions for Mechanical Soup
+import re
+import sys
 import mechanicalsoup
+from bs4 import BeautifulSoup
+
 import clbot_GUI as GUI
 import fields as fs
-import re, sys, threading
-from bs4 import BeautifulSoup
+
 
 
             ####################### MECHANICAL SOUP ############################
@@ -57,8 +60,8 @@ def create_a_post(browser):
     try:
         determine_page(browser)
 
-    except Exception as err:
-        print("An exception occurred: " + str(err))
+    except Exception as error:
+        print(f"An exception occurred: {str(error)}")
     return None
 
 def determine_page(browser):
@@ -123,8 +126,8 @@ def game_post(browser):
         choose_category_gaming(browser)
         print("Step 2 - Choose A Category")
 
-    except Exception as err:
-        print("An exception occurred: " + str(err))
+    except Exception as error:
+        print(f"An exception occurred: {str(error)}")
     return None
 
 def gaming_post(browser):
@@ -147,8 +150,8 @@ def gaming_post(browser):
 
         browser.launch_browser()
 
-    except Exception as err:
-        print("An exception occurred: " + str(err))
+    except Exception as error:
+        print(f"An exception occurred: {str(error)}")
     return None
 
 # step 1 and step 2
@@ -346,13 +349,15 @@ def goto_edit_page(browser, text):
 
     else:
         # not editing post, location or images
-        # page was already submitted so do nothing
-        print("Further Action Required To Complete Request")
-        print("You should receive an email shortly, with a link to:")
-        print("\t- publish your ad")
-        print("\t- edit (or confirm an edit to) your ad")
-        print("\t- verify your email address")
-        print("\t- delete your ad")
+        # page was already submitted so only print message
+		message = """
+		Further Action Required To Complete Request
+		You should receive an email shortly, with a link to:
+			publish your ad
+			edit (or confirm an edit to) your ad
+			verify your email address
+			delete your ad"""
+        print(message)
     return None
 
 
@@ -440,7 +445,7 @@ def get_name_attributes(tags):
 	name_list = []
 	for tag in tags:
 		name = tag.get_attribute_list('name')
-		name = put_strings_together_from_list(name)
+		name = add_strings_together_from_list(name)
 		name_list.append(name)
 	return name_list
 
@@ -455,7 +460,7 @@ def remove_tags_with_name_attributes(tags, exclude_values):
 	new_tags = []
 	for tag in tags:
 		value = tag.get_attribute_list('name')
-		value = put_strings_together_from_list(value)
+		value = add_strings_together_from_list(value)
 		if value not in exclude_values:
 			new_tags.append(tag)
 	return new_tags
@@ -466,7 +471,7 @@ def remove_tags_with_same_name_attr(tags):
 	name_list = get_name_attributes(tags)
 	for tag in tags:
 		name = tag.get_attribute_list('name')
-		name = put_strings_together_from_list(name)
+		name = add_strings_together_from_list(name)
 		while name_list.count(name) > 1:	# removes duplicate names
 			name_list.remove(name)
 		if name in name_list:				# tag has name attribute in name list
@@ -477,7 +482,7 @@ def remove_tags_with_same_name_attr(tags):
 
 
 #### string functions #####
-def put_strings_together_from_list(a_list):
+def add_strings_together_from_list(a_list):
     """
     Return a string comprised from list indices. List must be comprised of strings.
     """
@@ -494,6 +499,22 @@ def put_strings_together_from_list(a_list):
             return a_list[0]
         else:
             return a_list
+
+def put_strings_together(a_list):
+    """
+    Return a string comprised from list indices. List must be comprised of strings.
+    """
+    text = ""
+    if is_every_index_a_string(a_list):
+        for value in a_list:
+            text = text + value + " "
+        text = remove_whitespace_at_either_end(text)
+        return text
+    else:
+        print("This list contains an element that is not a string.")
+        print("Returning the first element of list.")
+        return a_list[0]
+
 
 def is_every_index_a_string(a_list):
     """
@@ -573,7 +594,7 @@ def find_button_with_type(browser, text):
     soup = browser.get_current_page()
     button = soup.find('button', type=text)
     if button == None:
-        print("A button tag with attribute type " + text + " does not exist.")
+        print(f"A button tag with attribute type '{text}' does not exist.")
     return button
 
 def find_button_with_text(browser, text):
@@ -586,7 +607,7 @@ def find_button_with_text(browser, text):
     text_variations = different_versions_of_string(text)    # different variations of text
     while (button.text not in text_variations):             
         if button.find_next('button') == None:  # next button does not exist.
-            print("There are no buttons with text='" + text + "' on this page.")
+            print("There are no buttons with text='{text}' on this page.")
             return None
         else:
             button = button.find_next('button')             # otherwise, keeping searching
@@ -687,8 +708,8 @@ def select_radio_option_from_list(a_list):
     print("These are the options for the categories (marked with **): ")
     for item in a_list:
         value = item[0].get_attribute_list('value') # value for radio button
-        value = put_strings_together_from_list(value)    # related to label of same index
-        print("\t*" + item[1] + "*\t\twith a value of: " + value)
+        value = add_strings_together_from_list(value)    # related to label of same index
+        print(f"\t*{item[1]}*\twith a value of: {value}")
 
     user_input = input("Enter the text or the value associated with it: ")
     user_input = determine_user_input_for_radio_button(user_input, a_list)
@@ -709,11 +730,11 @@ def determine_user_input_for_radio_button(user_input, tag_list):
     or the user input is, in some form, the text associated with a tag.    
     """
     name_attr = tag_list[0][0].get_attribute_list('name')   # name attribute of radio button
-    name_attr = put_strings_together_from_list(name_attr)
+    name_attr = add_strings_together_from_list(name_attr)
 
     for item in tag_list:
         value = item[0].get_attribute_list('value')
-        value = put_strings_together_from_list(value)
+        value = add_strings_together_from_list(value)
         if (user_input.lower() in item[1].lower()) or (user_input in value):
             return {name_attr:value}
 
@@ -739,6 +760,7 @@ def input_details(browser):
 	custom_fieldset = remove_tags_with_name_attributes(custom_fieldset, name_attrs)
 
 	# what am I trying to do?
+	return None
 
 def input_fieldset_details(browser, name_attrs):
 	"""User inputs details inside fieldset tags for post.
@@ -765,34 +787,83 @@ def input_general_details(browser):
 	"""User inputs general details for post.
 	
 	Sets the values for the name attributes with user input.
-	Returns a dictionary of name attributes that were used to set a value.
+	Returns a list of name attributes that were used to set a value.
 		# not all name attributes will be on page
 	"""
-	form = browser.select_form()
-	soup = browser.get_current_page()
-
-	# tag name attributes
+	# tag name attributes for general details required
 	name_attributes = ['PostingTitle', 'price','GeographicArea',
 	'postal','FromEMail','PostingBody']
-	name_attrs_used = []		# actual list of name attributes used
 
-	for name in name_attributes:
-		tag = soup.find(attrs={'name':name})
-		if tag != None:							# found a tag with name_attribute=name
-			name_attrs_used.append(name)		# adds name attribute to list
-			text = find_parent_sibling_text(tag)	# returns string or None
+	name_attrs_used = general_details(browser, name_attributes)
 
-			if text != None:					# found text describing tag
-				user_input = input("Input {0}: ".format(text))
-
-			else:
-				user_input = input("Input " + name + ": ")
-
-			form.set(name, user_input)			# sets the user's input for tag
 	return name_attrs_used
 
 
 # input details - functions
+# general details
+def general_details(browser, names):
+	"""Return a list of name attributes used to set a value.
+	
+	Goes through the name attributes given (names) and inputs the user's values.
+	"""
+	form = browser.select_form()
+	soup = browser.get_current_page()
+
+	name_attrs_used = []		# actual list of name attributes used
+
+	for name in names:
+		tag = tag = soup.find(attrs={'name':name})
+		if tag != None:							# found a tag with name_attribute=name
+			name_attrs_used.append(name)		# adds name attribute to list
+			tag_text = find_parent_sibling_text(tag)	
+			# returns string describing tag or None
+
+			if (tag_text != None) and value_exists(tag):	# tag has a value inputted
+				user_input = existing_value_input(tag, tag_text)
+
+			elif (tag_text == None) and value_exists(tag):
+				user_input = existing_value_input(tag, name)
+
+			elif tag_text != None:							# tag does not have a value inputted
+				user_input = input(f"Input {tag_text}: ")
+
+			else:
+				user_input = input(f"Input {name}: ")
+
+			form.set(name, user_input)	
+	return name_attrs_used
+
+# tag value functions
+def existing_value_input(tag, tag_text):
+	"""
+	Asks user if they would like to change the tag's value or keep it the same. 
+	Returns the user's input.
+	"""
+	value = tag.get_attribute_list('value')
+	value = add_strings_together_from_list(value)
+	message = (
+		f"{tag_text}: {value}   (already entered value).\n"
+		f"\tenter another value to change {tag_text}: "
+		)
+	user_input = input(message)
+
+	if user_input == "":
+		return value
+
+	return user_input
+
+def value_exists(tag):
+	"""Returns True if the tag has a value."""
+	value_list = ['',None]
+	value = tag.get_attribute_list('value')[0]
+
+	if value in value_list:
+		return False
+
+	else:
+		return True
+
+# find text functions
 def find_parent_sibling_text(tag):
 	"""Finds the parent's sibling that contains text that accompanies tag.
 	
@@ -809,7 +880,6 @@ def find_parent_sibling_text(tag):
 	else:
 		return find_siblings_text(tag.parent)
 
-
 def find_siblings_text(tag):
 	"""Given a tag, go through its previous and next siblings to find a span tag.
 	
@@ -817,8 +887,8 @@ def find_siblings_text(tag):
 	"""
 	# previous siblings
 	for sibling in tag.previous_siblings:
-		text = find_span_text(sibling)	# determines if sibling is a tag
-		if text != None:				# (if sibling is a tag and has a span tag)
+		text = find_span_text(sibling)	# finds the span tag's text within sibling
+		if text != None:				# text was found within span tag
 			return text 				# returns span tag's string; otherwise no return
 	
 	# next siblings
@@ -826,8 +896,8 @@ def find_siblings_text(tag):
 		text = find_span_text(sibling)
 		if text != None:
 			return text
+	
 	return None
-
 
 def find_span_text(sibling):
 	"""Returns a span tag's text if the sibling is a tag. 
@@ -839,9 +909,9 @@ def find_span_text(sibling):
 	Returns a string or None.
 	"""
 	if str(type(sibling)) == "<class 'bs4.element.Tag'>":	# sibling is a Tag
-		span = sibling.find('span', class_=re.compile("label"))	# finds the span tag within sibling tag
+		span = sibling.find('span', class_=re.compile("label"))
 		if span != None:				
-			return span.text 			# return span tag's string if span tag exists
+			return span.text
 	return None
 
 def remove_tags_with_attribute(tags, exclude_values):
@@ -860,7 +930,7 @@ def remove_tags_with_attribute(tags, exclude_values):
 
     for tag in tags:
         value = tag.get_attribute_list(attribute)
-        value = put_strings_together_from_list(value)
+        value = add_strings_together_from_list(value)
 
         if value not in exclude_values[attribute]:
             new_tags.append(tag)
@@ -892,13 +962,13 @@ def dict_of_name_attributes_and_values_from(tags):
     """
     tag_dict = {}
     for tag in tags:
-    	print("\t\t**" + tag.name + "** tag.")
+    	print("\t\t**{tag.name}** tag.")
 
     	if tag.name == 'select':
-    		tag_dict.update( dict_of_select(tag) )
+    		tag_dict.update(dict_of_select(tag))
 
     	else:
-    		tag_dict.update( dict_of_general_input(tag) )
+    		tag_dict.update(dict_of_general_input(tag))
 
     return tag_dict
 
@@ -911,14 +981,14 @@ def dict_of_general_input(tag):
         value = tag's value attribute
     """
     name = tag.get_attribute_list('name')
-    name = put_strings_together_from_list(name)
+    name = add_strings_together_from_list(name)
     value = tag.get_attribute_list('value')
     
     if value[0] == None:        # tag does not have 'value' attribute
         value = ""
 
     else:
-        value = put_strings_together_from_list(value)
+        value = add_strings_together_from_list(value)
 
     return {name:value}
 
@@ -931,7 +1001,7 @@ def dict_of_select(tag):
             options = {'choice1':'value1', 'choice2':'value2'}
     """
     name = tag.get_attribute_list('name')
-    name = put_strings_together_from_list(name)
+    name = add_strings_together_from_list(name)
     options = dict_options_of_select_tag(tag)
 
     return {name:options}
@@ -948,7 +1018,7 @@ def dict_options_of_select_tag(tag):
         # obtain the actual value for a option given by select tag
         if (type(child) == type(tag)) and (child.string != '\n'):
             value = child.get_attribute_list('value')        # actual value for given option
-            value = put_strings_together_from_list(value)    # (child.string = option)
+            value = add_strings_together_from_list(value)    # (child.string = option)
             options[child.string] = value
 
     return options
@@ -965,7 +1035,7 @@ def dict_of_user_inputs_from(a_dict):
 
     for name in a_dict:
         value = a_dict[name]
-        tag_dict.update( user_input_for(name, value) )
+        tag_dict.update(user_input_for(name, value))
 
     return tag_dict
 
@@ -973,7 +1043,8 @@ def dict_of_user_inputs_from(a_dict):
 def user_input_for(name, value):
     """Returns a dictionary containing a tag's name attribute and user input for it."""
     if type(value) == type({}):
-        print("Options for " + name + ": ")
+    	# select tag's options
+        print("Options for {name}: ")
         user_input = user_select_option(value)
 
     else:
@@ -985,7 +1056,7 @@ def user_input_for(name, value):
 def user_general_input(name, value):
     """Returns the user's input for a tag with name attribute = name."""
     if len(value) > 1:
-        info_text = "This tag already has a value of '" + value + "' for " + name + "."
+        info_text = f"This tag already has a value of '{value}' for {name}"
         print(info_text)
         confirmed = ask_for_confirmation("Would you like to keep it? ")
 
@@ -1023,7 +1094,7 @@ def get_real_option_value(user_input, options):
 def print_options(options):
     """Given a dictionary of options. Print the options (keys)."""
     for option in options:
-        print("\t" + option)
+        print("\t{option}")
     return None
 
 # inputting user info
@@ -1149,7 +1220,7 @@ def add_file(browser, button):
     form.choose_submit(button)                    # button for adding files (not submiting whole page)
     browser.submit_selected()
     
-    print("File: " + path_to_file + " has been added.")
+    print("File:'{path_to_file}'' has been added.")
     return None
 
 def find_name_attr_for_add_file_input(button):
@@ -1157,5 +1228,5 @@ def find_name_attr_for_add_file_input(button):
     soup = BeautifulSoup(str(button.parent),'lxml')
     input_tag = soup.find('input',type="file")
     name_attribute = input_tag.get_attribute_list('name')
-    name_attribute = put_strings_together_from_list(name_attribute)
+    name_attribute = add_strings_together_from_list(name_attribute)
     return name_attribute
