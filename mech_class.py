@@ -3,7 +3,9 @@
 # Craigslist Bot
 # Mechanical Soup Implementation
 import mechanicalsoup
+from PyQt5.QtWidgets import QApplication
 
+import GUI
 import mech_functions as m
 import general_functions as gen
 
@@ -28,33 +30,39 @@ class CreatePost():
 
     def create_a_post_process(self):
         MESSAGE = """
-			    The process of the mechanicalsoup implementation of 'Create A Post'.
+                The process of the mechanicalsoup implementation of 'Create A Post'.
 
-			    Step 1: Choose Type of Posting
-			    Step 2: Choose A Category
-			    Step 3: Create Posting - Enter Details 
-			    Step 4: Add Map - Adding Location to Post
-			    Step 5: Add Images
-			    Step 6: Unpublished Draft of Posting
-			        - ask user if they want to edit:
-			            # post
-			            # location
-			            # images
-			        - or finish and publish draft
-			    Step 7: ? email phase
-			    To Do: 
-			        - add GUI functionality. 
-			        - add a way to save data. 
-			        - add a way for bot to access email. 
-			        - continue to edit functions. 
-			    """
+                Step 1: Choose Type of Posting
+                Step 2: Choose A Category
+                Step 3: Create Posting - Enter Details 
+                Step 4: Add Map - Adding Location to Post
+                Step 5: Add Images
+                Step 6: Unpublished Draft of Posting
+                    - ask user if they want to edit:
+                        # post
+                        # location
+                        # images
+                    - or finish and publish draft
+                Step 7: ? email phase
+                To Do: 
+                    - add GUI functionality. 
+                    - add a way to save data. 
+                    - add a way for bot to access email. 
+                    - continue to edit functions. 
+                """
         print(MESSAGE)
         return None
     
-    def create_post(self):
-    	"""Starts the process of 'Create A Post'."""
-    	self.determine_page()
-    	return None
+    def begin_process(self):
+        """Starts the process of 'Create A Post'."""
+        # start GUI stuff
+        self.app = QApplication([])
+        self.window = GUI.Main()
+        self.window.show()
+        self.app.exec_()
+
+        self.determine_page()
+        return None
 
 
     def publish_draft_message(self):
@@ -78,22 +86,27 @@ class CreatePost():
         title_text = soup.title.text
 
         if 'type' in title_text or 'category' in title_text:
-            self.choose_category()
+            print(title_text)
+            self.choose_category_of_post()
             self.determine_page()
 
         elif 'map' in title_text:
+            print(title_text)
             self.add_location_to_post()
             self.determine_page()
 
         elif 'posting' in title_text and len(forms) == 1:
+            print(title_text)
             self.add_details_to_post()
             self.determine_page()
         
         elif ('posting' in title_text) and (len(forms) == 3):
+            print(title_text)
             self.add_images_to_post()
             self.determine_page()
 
         elif ('posting' in title_text) and (len(forms) == 8):
+            print(title_text)
             self.edit_draft_of_posting()
 
         else:
@@ -122,13 +135,21 @@ class CreatePost():
     
     # step 1 and step 2
     # Choose Type of Posting and Choose Category are basically the same
-    def choose_category(self):
+    def choose_category_of_post(self):
         """
         Step 1 & 2 - Choose Type of Posting or Choose Category.
         """
-        print(self.browser.get_current_page().title.text)
+        title = self.browser.get_current_page().title.text
+
+        # replacing user_input = m.select_from_radio_options(self.browser)
+            # with the new two calls
+        tags_and_text = m.determine_radio_buttons_and_text(self.browser)
+
+        self.window.createCategoryGroup(title, tags_and_text)
+        self.window.show()
+
         # dictionary = {name_attr:value}
-        user_input = m.select_from_radio_options(self.browser)
+        user_input = m.select_radio_option_from_list(tags_and_text)
 
         form = self.browser.select_form()
         form.set_radio(user_input)
@@ -270,12 +291,6 @@ class QuickCreatePost(CreatePost):
     Contains the methods used to quickly 'Create A Post' on Craigslist.
     For Sale By Owner - Video Games - Post
     """
-    def __init__(self):
-        self.browser = mechanicalsoup.StatefulBrowser()
-        self.browser.open("https://batonrouge.craigslist.org/")
-        self.browser.follow_link(id='post')        # 'create a post' link
-
-
     def game_post(self, step_num):
         """Quick Way to move through steps while debugging."""
         if step_num >= 1:

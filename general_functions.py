@@ -132,13 +132,21 @@ def starts_or_ends_with_whitespace(text):
 
 
 ######### BeautifulSoup Functions #########
+def get_attribute_string(tag, attribute):
+    """Returns the tag's attribute value as a string"""
+    attr = tag.get_attribute_list(attribute)
+    attr = put_strings_together(attr)
+    return attr
+
 def get_name_attributes(tags):
 	"""Returns a list of name attributes from tags."""
 	name_list = []
+
 	for tag in tags:
 		name = tag.get_attribute_list('name')
 		name = add_strings_together_from_list(name)
 		name_list.append(name)
+
 	return name_list
 
 def print_name_attrs(tags):
@@ -146,18 +154,28 @@ def print_name_attrs(tags):
 	for tag in tags:
 		print(tag.get_attribute_list('name'))
 
-# 	filter functions #
+## 	filter functions ##
+def checkbox_or_radio(a_type):
+    """Return type != 'radio' or 'checkbox'"""
+    types = ['checkbox', 'radio']
+    return a_type in types
+
 def fieldset_not_within_fieldset(tag):
 	"""Returns tag if it is a fieldset tag not within a fieldset tag."""
 	if tag.name == "fieldset":
 		if tag.find_parent('fieldset') == None:
 			return tag
 
+def not_checkbox_or_radio(a_type):
+    """Return type != 'radio' or 'checkbox'"""
+    types = ['checkbox', 'radio']
+    return a_type and not (a_type in types)
+
 def not_hidden(a_type):
 	"""Returns a type that is not equal to hidden."""
 	return a_type != "hidden"
 
-# 	find button functions #
+## 	find button functions ##
 def find_button_with_type(browser, text):
     """Find button with text given. 
     The text will be the filter for the type attribute."""

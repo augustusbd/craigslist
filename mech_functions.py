@@ -5,9 +5,124 @@
 # Functions 
 
 import mechanicalsoup
+from PyQt5.QtWidgets import (QDialog, QApplication, QLabel,
+                             QGridLayout)
 
-import fields as fs
 import general_functions as gen
+
+
+# Add Details - Fieldset Tags - Classes
+class Fieldset():
+    """
+    Structure containing a fieldset tag and its inputs.
+    """
+    def __init__(self, fieldset, exclude_name_attrs):
+        self.Title = gen.capitalize_each_word(fieldset.find('legend').text)
+        self._field = fieldset
+        self.subfield_exists = False
+
+        # determines if fieldset exists within fieldset
+        subfield = self.does_subfield_exist(fieldset)
+        if subfield != False:
+            self.subfield_exists = True
+            self.create_subfieldset(subfield, exclude_name_attrs)
+            # exlcude now includes the name attributes of the SubField
+            exclude_name_attrs = exclude_name_attrs + self.SubField.name_attributes
+
+        self.field_inputs(exclude_name_attrs)
+    
+    def __str__(self):
+        return f"{self.Title} grouping of tags."
+
+    def __repr__(self):
+        return f"Contains the tags of {self.Title}."
+
+    def field_inputs(self, exclude_name_attrs):
+        """Field inputs."""
+        input_tags = self._field.find_all('input', type=gen.not_checkbox_or_radio)
+        select_tags = self._field.find_all('select')
+        regular_tags = input_tags + select_tags
+
+        self.tags = gen.remove_tags_with_name_attributes(regular_tags, exclude_name_attrs)
+        self.name_attributes = gen.get_name_attributes(self.tags)    # list of name attributes from tags
+
+        other_inputs = self._field.find_all('input', type=gen.checkbox_or_radio)
+        self.other_tags = gen.remove_tags_with_same_name_attr(other_inputs)
+
+    def create_subfieldset(self, field, exclude_name_attrs):
+        """Creates the SubField object using the fieldset tag within fieldset tag."""
+        # this is a grouping within Fieldset GUI,
+        self.SubField = SubFieldset(field, exclude_name_attrs)
+        #group = QGroupBox()
+    
+    def input_values(self):
+        """User inputs values for field's tags."""
+        if self.subfield_exists:
+            inputs = get_user_inputs_for(self.tags)                # Field inputs
+            sub_inputs = get_user_inputs_for(self.SubField.tags)    # SubField inputs
+            self.user_inputs = gen.merge_dict(inputs, sub_inputs)
+
+        else:
+            self.user_inputs = get_user_inputs_for(self.tags)
+
+        return self.user_inputs
+
+    def input_other_values(self):
+        """User inputs values for field's other tags (radio and checkboxes)."""
+        if len(self.other_tags) == 0:
+            return {}
+
+        else:
+            inputs = get_user_input_for_others(self.other_tags)
+            return inputs
+
+    def return_name_attributes(self):
+        """Returns the field's name attributes as a list."""
+        if self.subfield_exists:
+            return self.name_attributes + self.SubField.name_attributes
+        
+        else:
+            return self.name_attributes
+
+    def does_subfield_exist(self, fieldset):
+        """Returns the subfield if it exists; otherwise returns False."""
+        subfield = fieldset.find('fieldset') # finds fieldset tag within fieldset tag
+        if subfield == None:
+            return False
+        else:
+            return subfield
+
+    def create_window(self):
+        """creates Fieldset GUI for inputting values."""
+        #self.window = QDialog()
+        #self.window.setWindowTitle(self.Title)
+        #self.MainLayout = QGridLayout()
+        pass
+
+
+
+class SubFieldset(Fieldset):
+    """
+    Structure containing a fieldset tag (and its inputs) 
+    that is within another fieldset tag.
+    """
+    pass
+    #def __init__(self, fieldset, exclude_name_attrs):
+        # this is a child of Fieldset object
+        # how do I get the same self.variables initialized
+        #super().__init__(self)
+
+
+
+def create_fieldset_objects(fieldsets, exclude_name_attrs):
+    """Using the fieldsets to create their own groupings."""
+    fieldset_objects = []
+
+    for field in fieldsets:
+        fieldset_objects.append(Fieldset(field, exclude_name_attrs))
+        
+    return fieldset_objects
+
 
 ######## MechanicalSoup Functions ########
 def set_user_inputs(form, user_dict):
@@ -62,15 +177,11 @@ def dict_of_general_input(tag):
         name = tag's name attribute
         value = tag's value attribute
     """
-    name = tag.get_attribute_list('name')
-    name = gen.add_strings_together_from_list(name)
-    value = tag.get_attribute_list('value')
+    name = gen.get_attribute_string(tag, 'name')
+    value = gen.get_attribute_string(tag, 'value')
     
-    if value[0] == None:        # tag does not have 'value' attribute
+    if value == None:        # tag does not have 'value' attribute
         value = ""
-
-    else:
-        value = gen.add_strings_together_from_list(value)
 
     return {name:value}
 
@@ -82,8 +193,8 @@ def dict_of_select_tag(tag):
         options = dictionary
             options = {'choice1':'value1', 'choice2':'value2'}
     """
-    name = tag.get_attribute_list('name')
-    name = gen.add_strings_together_from_list(name)
+
+    name = gen.get_attribute_string(tag, 'name')
     options = dict_options_of_select_tag(tag)       # 1.2.1
 
     return {name:options}
@@ -98,11 +209,15 @@ def dict_options_of_select_tag(tag):
     """
     options = {}
     for child in tag.children:
+
         # obtain the actual value for an option given by select tag
         if (type(child) == type(tag)) and (child.string != '\n'):
-            value = child.get_attribute_list('value')       # actual value for given option
-            value = gen.add_strings_together_from_list(value)    
-            options[child.string] = value                   # (child.string = option)
+
+            # actual value for given option
+            value = gen.get_attribute_string(child, 'value')
+
+            # (child.string = option)
+            options[child.string] = value                   
 
     return options
 
@@ -178,6 +293,99 @@ def get_real_option_value(user_input, options):
             return options[key]
 
     return user_input
+
+
+#X and #XX
+def get_user_input_for_others(tags):
+    """
+    Returns a dictionary containing the name attributes and values for tags.
+
+    tags = list of input tags that have type = 'checkbox' or 'radio'
+    """
+
+    tag_dict = {}
+    for tag in tags:
+        type_ = gen.get_attribute_string(tag, 'type')
+
+        if type_ == 'checkbox':
+            tag_dict.update(checkbox_input(tag))    #X
+
+        elif type_ == 'radio':
+            tag_dict.update(radio_input(tag))       #XX
+
+    return tag_dict
+
+#X
+def checkbox_input(tag):
+    """
+    User checks the checkbox if desired.
+    
+    Ask user if they want to check checkbox
+        if yes,
+            return {name:value}
+        else
+            return {}
+    """
+    name = gen.get_attribute_string(tag, 'name')
+    value = gen.get_attribute_string(tag, 'value')
+
+    text = gen.find_parent_sibling_text(tag)
+
+    if text != None:
+        confirmed = gen.ask_for_confirmation(f"Would you like to check checkbox of {text}? ")
+
+    else:
+        confirmed = gen.ask_for_confirmation(f"Would you like to check checkbox of {name}? ")
+
+    if confirmed:
+        return {name:value}
+
+    else:
+        return {}
+
+#XX
+def radio_input(tag):
+    """
+    User selects the desired radio option.
+
+    Find other radio inputs with same name,
+    Give user the options of radio inputs,
+    Ask user which one they would like to select
+
+    Return {name:value_of_radio_option}
+    """
+    name = gen.get_attribute_string(tag, 'name')
+
+     # gets the full html tag without needing browser
+    soup = tag.find_parent('html') 
+    
+    # find input radio tags with same name attribute
+    radios = soup.find_all('input', attrs={'name':name, 'type':'radio'})
+    
+    print(gen.find_parent_sibling_text(radios[0]))    # describes the radio options
+
+    radio_dict = {}
+
+    print("These are the radio options: ")
+    for radio in radios:
+        pos = radios.index(radio) + 1          # position of radio button in dictionary
+        title = gen.get_attribute_string(radio, 'title')
+        
+        # value of radio button (browser uses this to select option)
+        value = gen.get_attribute_string(tag, 'value')     
+        
+        radio_dict[str(pos)] = value                # store value of radio button
+
+        print(f"\tOption #{pos}: {title}")    # gives radio button info
+        print(f"\t\tBasically means: {gen.find_siblings_text(radio)}\n")
+
+    user_input = input("Which option would you like to select? (enter option #): ")
+
+    return {name:radio_dict[user_input]}
+
+
+
+
 
 
 
@@ -268,8 +476,7 @@ def select_radio_option_from_list(a_list):
 
     print("These are the options for the categories (marked with **): ")
     for item in a_list:
-        value = item[0].get_attribute_list('value') # value for radio button
-        value = gen.add_strings_together_from_list(value)
+        value = gen.get_attribute_string(item[0], 'value')# value for radio button
         print(f"\t*{item[1]}*\twith a value of: {value}")
 
     user_input = input("Enter the text or the value associated with it: ")
@@ -293,12 +500,10 @@ def determine_user_input_for_radio_button(user_input, tag_list):
     or the user input is, in some form, the text associated with a tag.    
     """
     # name attribute of radio tags
-    name_attr = tag_list[0][0].get_attribute_list('name')
-    name_attr = gen.add_strings_together_from_list(name_attr)
+    name_attr = gen.get_attribute_string(tag_list[0][0], 'name')
 
     for item in tag_list:
-        value = item[0].get_attribute_list('value')
-        value = gen.add_strings_together_from_list(value)
+        value = gen.get_attribute_string(item, 'value')
 
         if (user_input.lower() in item[1].lower()) or (user_input in value):
             return {name_attr:value}
@@ -397,7 +602,7 @@ def input_fieldset_details(browser, name_attrs):
 
     # split tags into their fieldsets
     fieldsets = soup.find_all(gen.fieldset_not_within_fieldset)
-    fieldset_objects = fs.create_fieldset_objects(fieldsets, name_attrs)
+    fieldset_objects = create_fieldset_objects(fieldsets, name_attrs)
 
     for field in fieldset_objects:
         name_attrs = name_attrs + field.return_name_attributes() # name attributes of tags used
@@ -480,8 +685,7 @@ def find_name_attr_for_add_file_input(button):
     """Returns name attribute for input associated with add file."""
     soup = button.parent
     input_tag = soup.find('input',type="file")
-    name_attribute = input_tag.get_attribute_list('name')
-    name_attribute = gen.add_strings_together_from_list(name_attribute)
+    name_attribute = gen.get_attribute_string(input_tag, 'name')
     return name_attribute
 
 

@@ -1,50 +1,67 @@
 #! /usr/bin/python3
 
 # Craigslist Bot  
-#    1st Iteration - Selling My Brother's Car 
+#    1st Iteration - 'Create A Post' 
 
 # do not use python-craigslist for selling; only for buying and scraping posts
 # may need requests and beautifulsoup4
 # import requests, bs4
-
-import selenium_functions as sele
-import mech_functions as mech
 import sys
 
+import selenium_functions as sele
+import general_functions as gen
+import mech_class as mech
 
-def selenium_browser(URL):
+
+def selenium_browser_create_post(URL):
+    """
+    Selenium WebDriver Implementation of 'Create A Post'
+    """
     browser = sele.sele_open_browser(URL)
     try:
         sele.sele_create_post(browser)
+
     except Exception as err:
-        print("An exception occurred: " + str(err))
+        print(f"An exception occurred: {str(error)}")
+
     return browser
 
-def mechanical_browser(URL):
-    browser = mech.open(URL)
+
+def mechanical_browser_create_post():
+    """
+    Mechanical Soup Implementation of 'Create A Post'
+    """
+    post = mech.CreatePost()
     try:
-        mech.create_post(browser)
-    except Exception as err:
-        print("An exception occurred: " + str(err))
-    return browser
+        post.begin_process()
 
+    except Exception as error:
+        print(f"An exception occurred: {str(error)}")
+
+    return post
+
+
+URL = 'https://batonrouge.craigslist.org/'
 
 def main():
-    URL = 'https://batonrouge.craigslist.org/'
-    ans = input("Hello, I'm the Craigslist Bot!\nWould you like to make a post? ")
-    affirmative = ('yes','yep', 'ye', 'y', '', 'mhmm', 'oui', 'si')
-    if ans in affirmative:
-        _type = input("What type of program: [mech]anicalsoup or [sele]nium? ")
-        if _type != 'sele':
+    print("Hello, I'm the Craigslist Bot!")
+    confirmed = gen.ask_for_confirmation("Would you like to make a post? ")
+
+    if confirmed:
+        _input = input("What type of program: [mech]anicalsoup or [sele]nium? ")
+        if _input != 'sele':
             # open browser with mechanical soup
             # currently mechanical is the only way that fully works
-            browser = mechanical_browser(URL)
+            post = mechanical_browser_create_post()
+
         else:
-            browser = selenium_browser(URL)
+            browser = selenium_browser_create_post(URL)
+
     else:
         print("I'm sorry, I can only make posts for now. Goodbye!")
-        sys.exit()
+
     sys.exit()
+
 
 if __name__ == '__main__':
     main()   
