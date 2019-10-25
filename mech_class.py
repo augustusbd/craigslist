@@ -19,7 +19,10 @@ class CreatePost():
         self.browser.open("https://batonrouge.craigslist.org/")
         self.browser.follow_link(id='post')        # 'create a post' link
 
-        #self.determine_page()                    # starts process            
+        # start GUI stuff
+        self.app = QApplication([])
+        self.window = GUI.Window()
+        self.app.exec_()
 
 
     def __str__(self):
@@ -55,11 +58,6 @@ class CreatePost():
     
     def begin_process(self):
         """Starts the process of 'Create A Post'."""
-        # start GUI stuff
-        self.app = QApplication([])
-        self.window = GUI.Main()
-        self.window.show()
-        self.app.exec_()
 
         self.determine_page()
         return None
@@ -84,29 +82,25 @@ class CreatePost():
         soup = self.browser.get_current_page()
         forms = soup.find_all('form')        # length of forms gives a hint towards page
         title_text = soup.title.text
+        print(title_text)
 
         if 'type' in title_text or 'category' in title_text:
-            print(title_text)
             self.choose_category_of_post()
             self.determine_page()
 
         elif 'map' in title_text:
-            print(title_text)
             self.add_location_to_post()
             self.determine_page()
 
         elif 'posting' in title_text and len(forms) == 1:
-            print(title_text)
             self.add_details_to_post()
             self.determine_page()
         
         elif ('posting' in title_text) and (len(forms) == 3):
-            print(title_text)
             self.add_images_to_post()
             self.determine_page()
 
         elif ('posting' in title_text) and (len(forms) == 8):
-            print(title_text)
             self.edit_draft_of_posting()
 
         else:
@@ -145,7 +139,7 @@ class CreatePost():
             # with the new two calls
         tags_and_text = m.determine_radio_buttons_and_text(self.browser)
 
-        self.window.createCategoryGroup(title, tags_and_text)
+        self.window.createCategoryGroup(tags_and_text, title)
         self.window.show()
 
         # dictionary = {name_attr:value}
@@ -254,7 +248,8 @@ class CreatePost():
             # publishes the post
             # email gets sent to given email address
             print("No Edits? Okay. Publishing the draft now!")
-            self.submit()
+            # self.submit()
+            print("\tthe post is not being submitted.")
             return None
 
         form = self.browser.select_form(button.parent)
