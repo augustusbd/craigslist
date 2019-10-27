@@ -7,6 +7,33 @@ import re
 
 #abcdefghijklmnopqrstuvwxyz
 
+
+### USED IN MECH_CLASS ###
+def first_string_if_not_empty(string1, string2):
+    """Returns the first string argument if it isn't None."""
+    if string1 != None:
+        return string1
+    else:
+        return string2
+
+def text_from_tags(tags):
+    """Returns a list of strings containing text for options."""
+    text_list = []
+    for tag in tags:
+        text = remove_whitespace_at_either_end(tag.text)
+        text = remove_non_space_whitespace(text)
+        text_list.append(text)
+    return text_list
+    
+def find_name_attr_for_add_file_input(button):
+    """Returns name attribute for input associated with add file."""
+    soup = button.parent
+    input_tag = soup.find('input',type="file")
+    name_attribute = gen.get_attribute_string(input_tag, 'name')
+    return name_attribute
+
+
+
 ############### General Functions ###############
 def ask_for_confirmation(text):
     """Ask a user if they would like to do something or not. Returns True or False."""

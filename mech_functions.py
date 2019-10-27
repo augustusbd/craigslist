@@ -385,19 +385,7 @@ def radio_input(tag):
 
 
 
-
-
-
-
 # STEP 1 & 2 - Selecting Radio Option
-def text_from_tags(tags):
-    """Returns a list of strings containing text for options."""
-    text_list = []
-    for tag in tags:
-        text = gen.remove_whitespace_at_either_end(tag.text)
-        text = gen.remove_non_space_whitespace(text)
-        text_list.append(text)
-    return text_list
 
 #   input radio options and user input
 def select_from_radio_options(browser):
@@ -502,10 +490,10 @@ def determine_user_input_for_radio_button(user_input, tag_list):
     # name attribute of radio tags
     name_attr = gen.get_attribute_string(tag_list[0][0], 'name')
 
-    for item in tag_list:
-        value = gen.get_attribute_string(item, 'value')
+    for tag,text in tag_list:
+        value = gen.get_attribute_string(tag, 'value')
 
-        if (user_input.lower() in item[1].lower()) or (user_input in value):
+        if (user_input.lower() in text.lower()) or (user_input.lower() in value.lower()):
             return {name_attr:value}
 
     print("Inputted value does not refer to anything.")
@@ -681,11 +669,10 @@ def add_file(browser, button):
     print("File:'{path_to_file}'' has been added.")
     return None
 
+
 def find_name_attr_for_add_file_input(button):
     """Returns name attribute for input associated with add file."""
     soup = button.parent
     input_tag = soup.find('input',type="file")
     name_attribute = gen.get_attribute_string(input_tag, 'name')
     return name_attribute
-
-
