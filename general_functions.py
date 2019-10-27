@@ -29,7 +29,7 @@ def find_name_attr_for_add_file_input(button):
     """Returns name attribute for input associated with add file."""
     soup = button.parent
     input_tag = soup.find('input',type="file")
-    name_attribute = gen.get_attribute_string(input_tag, 'name')
+    name_attribute = get_attribute_string(input_tag, 'name')
     return name_attribute
 
 
